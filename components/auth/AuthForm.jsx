@@ -20,12 +20,46 @@ export default function AuthForm({ mode }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
+  const [resendStatus, setResendStatus] = useState("");
+  const [resendLoading, setResendLoading] = useState(false);
+
+  const shouldShowResend =
+    resendStatus === "confirm" ||
+    error.toLowerCase().includes("confirm") ||
+    info.toLowerCase().includes("confirm");
+
+  const handleResend = async () => {
+    if (!email) {
+      setError("Enter your email to resend the confirmation.");
+      return;
+    }
+    setResendLoading(true);
+    setError("");
+    setInfo("");
+
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const { error: resendError } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: origin ? { emailRedirectTo: `${origin}/sign-in` } : undefined
+    });
+
+    if (resendError) {
+      setError(resendError.message);
+      setResendLoading(false);
+      return;
+    }
+
+    setInfo("Confirmation email sent. Check your inbox.");
+    setResendLoading(false);
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setLoading(true);
     setError("");
     setInfo("");
+    setResendStatus("");
 
     if (isSignUp) {
       const { data, error: signUpError } = await supabase.auth.signUp({
@@ -57,6 +91,7 @@ export default function AuthForm({ mode }) {
       }
 
       setInfo("Check your email to confirm your account.");
+      setResendStatus("confirm");
       setLoading(false);
       return;
     }
@@ -69,6 +104,9 @@ export default function AuthForm({ mode }) {
 
     if (signInError) {
       setError(signInError.message);
+      if (signInError.message.toLowerCase().includes("confirm")) {
+        setResendStatus("confirm");
+      }
       setLoading(false);
       return;
     }
@@ -150,6 +188,18 @@ export default function AuthForm({ mode }) {
           <p className="rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-sm text-emerald-200">
             {info}
           </p>
+        )}
+
+        {shouldShowResend && (
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={handleResend}
+            disabled={resendLoading}
+          >
+            {resendLoading ? "Resending..." : "Resend confirmation email"}
+          </Button>
         )}
 
         <Button type="submit" className="w-full" disabled={loading}>
