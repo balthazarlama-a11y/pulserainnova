@@ -23,8 +23,9 @@ const Bracelet = ({ size = 340, tone = 'lavender', floating = true, pulse = true
     }
   }[tone];
 
-  const w = size;
-  const h = size * 0.85;
+  const maxWidth = typeof window !== 'undefined' ? Math.min(size, window.innerWidth - 64) : size;
+  const w = Math.max(240, maxWidth);
+  const h = w * 0.85;
 
   return (
     <div style={{

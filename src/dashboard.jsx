@@ -1,4 +1,36 @@
 // Parent dashboard — stress circle, 24h chart, AI recs, weekly history
+// Now connected to Supabase for real data!
+
+const DEMO_CHILD_ID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+
+const MOCK_RECOMMENDATIONS = {
+  calm: [
+    { title: 'Dibujo tranquilo', detail: '5 minutos de colorear con tonos suaves y música baja.', duration: '5 min', icon: 'book' },
+    { title: 'Pausa de agua', detail: 'Tomar agua lenta y contar 10 tragos juntos.', duration: '2 min', icon: 'hug' },
+    { title: 'Estiramiento suave', detail: 'Brazos arriba y respirar profundo tres veces.', duration: '3 min', icon: 'wind' }
+  ],
+  mild: [
+    { title: 'Respira 4-4-6', detail: 'Inhala 4, mantén 4, exhala 6 con una mano en el pecho.', duration: '3 min', icon: 'wind' },
+    { title: 'Juego de burbujas', detail: 'Reventar burbujas al ritmo de la respiración.', duration: '5 min', icon: 'game' },
+    { title: 'Música lenta', detail: 'Canción suave con palmas lentas para bajar la energía.', duration: '6 min', icon: 'music' }
+  ],
+  moderate: [
+    { title: 'Círculo de calma', detail: 'Dibujar un círculo con el dedo y seguirlo con la respiración.', duration: '4 min', icon: 'wind' },
+    { title: 'Historia corta', detail: 'Leer un cuento breve juntos en un rincón tranquilo.', duration: '7 min', icon: 'book' },
+    { title: 'Abrazo mariposa', detail: 'Cruzar brazos y dar toques suaves alternados.', duration: '3 min', icon: 'hug' }
+  ],
+  high: [
+    { title: 'Respira con conteo', detail: 'Inhala 3, mantén 3, exhala 5 mientras miras un punto.', duration: '4 min', icon: 'wind' },
+    { title: 'Rincón seguro', detail: 'Ir a un lugar cómodo con luz baja y manta suave.', duration: '6 min', icon: 'hug' },
+    { title: 'Música de lluvia', detail: 'Escuchar lluvia suave y balancearse lentamente.', duration: '8 min', icon: 'music' }
+  ]
+};
+
+const mockClaudeComplete = (stress, stateKey) => {
+  const key = stateKey || (stress <= 30 ? 'calm' : stress <= 55 ? 'mild' : stress <= 75 ? 'moderate' : 'high');
+  const recommendations = MOCK_RECOMMENDATIONS[key] || MOCK_RECOMMENDATIONS.mild;
+  return Promise.resolve(JSON.stringify({ recommendations }));
+};
 
 const StressRing = ({ value, size = 260 }) => {
   const state = stressState(value);
@@ -46,24 +78,32 @@ const StressRing = ({ value, size = 260 }) => {
   );
 };
 
-// 24h chart — uses synthetic curve driven by stress value
-const StressChart = ({ stress }) => {
+// 24h chart — uses REAL data from Supabase, falls back to synthetic
+const StressChart = ({ stress, hourlyData }) => {
   const w = 640, h = 180;
-  // Build a 24-hour curve that averages around current stress
   const points = React.useMemo(() => {
+    // If we have real hourly data from Supabase, use it
+    if (hourlyData && hourlyData.length === 24) {
+      return hourlyData.map(h => {
+        if (h.avgStress !== null) return h.avgStress;
+        // Fill gaps with synthetic data
+        const wobble = Math.sin(h.hour * 0.6 + stress * 0.05) * 10;
+        return Math.max(5, Math.min(95, stress + wobble));
+      });
+    }
+    // Fallback: synthetic curve
     const seed = stress;
     const arr = [];
     for (let i = 0; i < 24; i++) {
       const wobble = Math.sin(i * 0.6 + seed * 0.05) * 10
                    + Math.sin(i * 1.3) * 5
                    + Math.sin(i * 0.3 + seed * 0.1) * 8;
-      // push higher peaks toward school hours (8-14)
       const schoolBump = (i >= 8 && i <= 14) ? 10 : 0;
       const v = Math.max(5, Math.min(95, seed + wobble + schoolBump - 10));
       arr.push(v);
     }
     return arr;
-  }, [stress]);
+  }, [stress, hourlyData]);
 
   const xFor = i => 20 + (i / 23) * (w - 40);
   const yFor = v => h - 20 - (v / 100) * (h - 40);
@@ -116,14 +156,24 @@ const Stat = ({ label, value, sub, accent }) => (
   </div>
 );
 
-const WeekBars = ({ stress }) => {
+const WeekBars = ({ stress, weeklyData }) => {
   const days = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
   const vals = React.useMemo(() => {
+    // If we have real weekly data, map it to days
+    if (weeklyData && weeklyData.length > 0) {
+      // Pad to 7 days — fill missing days with synthetic
+      const result = days.map((_, i) => {
+        if (weeklyData[i]) return weeklyData[i].avgStress;
+        const base = stress + Math.sin(i * 1.8) * 18 + Math.cos(i) * 8;
+        return Math.max(10, Math.min(95, base));
+      });
+      return result;
+    }
     return days.map((_, i) => {
       const base = stress + Math.sin(i * 1.8) * 18 + Math.cos(i) * 8;
       return Math.max(10, Math.min(95, base));
     });
-  }, [stress]);
+  }, [stress, weeklyData]);
   return (
     <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, height: 120 }}>
       {vals.map((v, i) => {
@@ -156,15 +206,9 @@ const RecommendationPanel = ({ stress }) => {
   const fetchRecs = React.useCallback(async () => {
     setLoading(true);
     try {
-      const prompt = `Eres una psicóloga infantil experta. Sofía, 8 años, tiene un nivel de estrés de ${stress}/100 (${state.label}). Da 3 recomendaciones MUY concretas (no genéricas) para los próximos 15 minutos. Formato JSON estricto, sin markdown, sin texto fuera del JSON:
-{"recommendations":[{"title":"...", "detail":"...", "duration":"X min", "icon":"wind|game|music|book|hug"}]}
-- title: 4-6 palabras, acción clara
-- detail: 1 frase, cálida y específica
-- duration: minutos realistas
-- icon: uno de wind/game/music/book/hug
-Responde SOLO el JSON.`;
-      const raw = await window.claude.complete(prompt);
-      const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+      await new Promise(r => setTimeout(r, 350));
+      const raw = await mockClaudeComplete(stress, state.key);
+      const parsed = JSON.parse(raw);
       setRecs(parsed.recommendations || []);
     } catch (e) {
       // Fallback
@@ -175,7 +219,7 @@ Responde SOLO el JSON.`;
       ]);
     }
     setLoading(false);
-  }, [stress, state.label]);
+  }, [stress, state.key]);
 
   React.useEffect(() => { fetchRecs(); }, [fetchRecs]);
 
@@ -265,12 +309,77 @@ const Dashboard = ({ stress, setStress, onGoKids, onSignOut }) => {
   const now = new Date();
   const greeting = now.getHours() < 12 ? 'Buenos días' : now.getHours() < 19 ? 'Buenas tardes' : 'Buenas noches';
 
+  // ─── Supabase data state ───
+  const [child, setChild] = React.useState(null);
+  const [hourlyData, setHourlyData] = React.useState(null);
+  const [weeklyData, setWeeklyData] = React.useState(null);
+  const [latestBpm, setLatestBpm] = React.useState(null);
+  const [alerts, setAlerts] = React.useState([]);
+  const [dbConnected, setDbConnected] = React.useState(false);
+
+  // Fetch initial data from Supabase
+  React.useEffect(() => {
+    const load = async () => {
+      try {
+        // Fetch child profile
+        const childData = await fetchChild(DEMO_CHILD_ID);
+        if (childData) setChild(childData);
+
+        // Fetch 24h readings
+        const readings = await fetchReadings(DEMO_CHILD_ID, 24);
+        if (readings.length > 0) {
+          setHourlyData(groupByHour(readings));
+
+          // Get latest reading and set stress from real data
+          const latest = readings[readings.length - 1];
+          setLatestBpm(latest.bpm);
+          if (latest.stress_level != null) {
+            setStress(latest.stress_level);
+          }
+          setDbConnected(true);
+        }
+
+        // Fetch weekly data
+        const weekly = await fetchWeeklyAvg(DEMO_CHILD_ID);
+        if (weekly.length > 0) setWeeklyData(weekly);
+
+        // Fetch alerts
+        const alertData = await fetchAlerts(DEMO_CHILD_ID, 5);
+        if (alertData.length > 0) setAlerts(alertData);
+      } catch (e) {
+        console.warn('Supabase load failed, using mock data:', e);
+      }
+    };
+    load();
+  }, []);
+
+  // Subscribe to real-time heart readings
+  useRealtimeReadings(DEMO_CHILD_ID, (newReading) => {
+    setLatestBpm(newReading.bpm);
+    if (newReading.stress_level != null) {
+      setStress(newReading.stress_level);
+    }
+    // Refresh hourly data
+    fetchReadings(DEMO_CHILD_ID, 24).then(readings => {
+      if (readings.length > 0) setHourlyData(groupByHour(readings));
+    });
+  });
+
+  // Subscribe to real-time alerts
+  useRealtimeAlerts(DEMO_CHILD_ID, (newAlert) => {
+    setAlerts(prev => [newAlert, ...prev].slice(0, 5));
+  });
+
+  // Computed stats from real data
+  const avgBpm = latestBpm || (72 + Math.floor(stress / 5));
+  const childName = child ? child.name : 'Sofía';
+
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-2)', color: 'var(--ink)', position: 'relative' }}>
+    <div className="dashboard-root" style={{ minHeight: '100vh', background: 'var(--bg-2)', color: 'var(--ink)', position: 'relative' }}>
       <AmbientOrbs/>
 
       {/* Sidebar */}
-      <aside style={{
+      <aside className="dashboard-sidebar" style={{
         position: 'fixed', left: 0, top: 0, bottom: 0,
         width: 76, zIndex: 5,
         borderRight: '1px solid var(--border)',
@@ -309,17 +418,17 @@ const Dashboard = ({ stress, setStress, onGoKids, onSignOut }) => {
       </aside>
 
       {/* Main */}
-      <main style={{ marginLeft: 76, padding: '32px 40px 80px', position: 'relative', zIndex: 2, maxWidth: 1440 }}>
+      <main className="dashboard-main" style={{ marginLeft: 76, padding: '32px 40px 80px', position: 'relative', zIndex: 2, maxWidth: 1440 }}>
         {/* Top bar */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 36 }}>
           <div>
             <div style={{ fontSize: 13, color: 'var(--ink-dim)', marginBottom: 4 }}>{greeting}, Carolina</div>
             <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: 32, fontWeight: 500, margin: 0, letterSpacing: '-0.02em' }}>
-              Así está <GradientText>Sofía</GradientText> hoy
+              Así está <GradientText>{childName}</GradientText> hoy
             </h1>
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <Pill dot={state.hex}>Pulsera conectada</Pill>
+            <Pill dot={state.hex}>{dbConnected ? 'Supabase conectado' : 'Pulsera conectada'}</Pill>
             <Button variant="soft" size="sm" onClick={onGoKids}>
               Abrir vista de Sofía <IconArrowRight size={12}/>
             </Button>
@@ -333,7 +442,7 @@ const Dashboard = ({ stress, setStress, onGoKids, onSignOut }) => {
         </div>
 
         {/* Row 1: ring + recommendations */}
-        <div style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: 24, marginBottom: 24 }}>
+        <div className="dashboard-row dashboard-row-primary" style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: 24, marginBottom: 24 }}>
           <Card style={{ padding: 28, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
             <StressRing value={stress} size={260}/>
             <div style={{
@@ -378,17 +487,17 @@ const Dashboard = ({ stress, setStress, onGoKids, onSignOut }) => {
               ))}
             </div>
           </div>
-          <StressChart stress={stress}/>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginTop: 24 }}>
+          <StressChart stress={stress} hourlyData={hourlyData}/>
+          <div className="dashboard-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginTop: 24 }}>
             <Stat label="Promedio hoy" value={`${Math.round(100 - stress * 0.95)}`} sub="nivel de calma" accent={state.hex}/>
             <Stat label="Ejercicios" value="4" sub="completados"/>
-            <Stat label="Ritmo cardíaco" value={`${72 + Math.floor(stress/5)}`} sub="lpm promedio"/>
+            <Stat label="Ritmo cardíaco" value={`${avgBpm}`} sub="lpm promedio"/>
             <Stat label="Sueño" value="8h 20m" sub="anoche"/>
           </div>
         </Card>
 
         {/* Row 3: week + insights */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 24 }}>
+        <div className="dashboard-row dashboard-row-secondary" style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 24 }}>
           <Card style={{ padding: 28 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
               <div>
@@ -397,7 +506,7 @@ const Dashboard = ({ stress, setStress, onGoKids, onSignOut }) => {
               </div>
               <Pill>{state.label}</Pill>
             </div>
-            <WeekBars stress={stress}/>
+            <WeekBars stress={stress} weeklyData={weeklyData}/>
             <div style={{ marginTop: 18, padding: 14, borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', fontSize: 13, color: 'var(--ink-dim)', lineHeight: 1.5 }}>
               <strong style={{ color: 'var(--ink)' }}>Observación:</strong> los miércoles muestran picos más altos, coinciden con clases de matemáticas.
             </div>
@@ -407,13 +516,28 @@ const Dashboard = ({ stress, setStress, onGoKids, onSignOut }) => {
             <div style={{ fontSize: 12, letterSpacing: 1.4, textTransform: 'uppercase', color: 'var(--ink-dim)', marginBottom: 4 }}>Actividad</div>
             <h3 style={{ margin: '0 0 18px', fontFamily: 'Fraunces, serif', fontSize: 22, fontWeight: 500, letterSpacing: -0.3 }}>Hoy</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {[
+              {(alerts.length > 0 ? alerts.map(a => {
+                const time = new Date(a.created_at);
+                const hh = time.getHours().toString().padStart(2, '0');
+                const mm = time.getMinutes().toString().padStart(2, '0');
+                const sevColors = { low: '#5EDC9A', medium: '#F5D06F', high: '#F59E4C', crisis: '#EC5B6B' };
+                const sevIcons = { low: <IconHeart size={14}/>, medium: <IconActivity size={14}/>, high: <IconBell size={14}/>, crisis: <IconShield size={14}/> };
+                return {
+                  t: `${hh}:${mm}`,
+                  e: a.severity === 'low' ? 'Nivel bajo — sin acción' :
+                     a.severity === 'medium' ? `Alerta media · ${a.trigger_bpm} BPM` :
+                     a.severity === 'high' ? `Estrés alto · ${a.trigger_bpm} BPM` :
+                     `Crisis · ${a.trigger_bpm} BPM`,
+                  icon: sevIcons[a.severity],
+                  c: sevColors[a.severity]
+                };
+              }) : [
                 { t: '07:15', e: 'Despertó tranquila', icon: <IconSun size={14}/>, c: '#F5D06F' },
                 { t: '08:40', e: 'Pico leve camino al cole', icon: <IconActivity size={14}/>, c: '#F59E4C' },
                 { t: '10:22', e: 'Respiración 4-7-8 completada', icon: <IconWind size={14}/>, c: '#A8E6CF' },
                 { t: '13:05', e: 'Almuerzo, muy relajada', icon: <IconHeart size={14}/>, c: '#5EDC9A' },
                 { t: '16:30', e: 'Mini-juego burbujas', icon: <IconGamepad size={14}/>, c: '#B8A4FF' }
-              ].map((x, i) => (
+              ]).map((x, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <div style={{ fontSize: 12, color: 'var(--ink-faint)', fontVariantNumeric: 'tabular-nums', width: 44 }}>{x.t}</div>
                   <div style={{
