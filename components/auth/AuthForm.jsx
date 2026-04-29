@@ -1,0 +1,175 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
+import { useAuth } from "@/hooks/useAuth";
+
+export default function AuthForm({ mode }) {
+  const isSignUp = mode === "sign-up";
+  const router = useRouter();
+  const { supabase } = useAuth();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
+    setInfo("");
+
+    if (isSignUp) {
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            display_name: displayName
+          }
+        }
+      });
+
+      if (signUpError) {
+        setError(signUpError.message);
+        setLoading(false);
+        return;
+      }
+
+      if (data?.session && data.user) {
+        await supabase.from("profiles").upsert({
+          id: data.user.id,
+          email,
+          display_name: displayName || null,
+          updated_at: new Date().toISOString()
+        });
+        router.push("/dashboard");
+        router.refresh();
+        return;
+      }
+
+      setInfo("Check your email to confirm your account.");
+      setLoading(false);
+      return;
+    }
+
+    const { data: signInData, error: signInError } =
+      await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (signInError) {
+      setError(signInError.message);
+      setLoading(false);
+      return;
+    }
+
+    if (signInData?.user) {
+      await supabase.from("profiles").upsert({
+        id: signInData.user.id,
+        email: signInData.user.email,
+        updated_at: new Date().toISOString()
+      });
+    }
+
+    router.push("/dashboard");
+    router.refresh();
+  };
+
+  return (
+    <Card className="mx-auto w-full max-w-md space-y-6">
+      <div className="space-y-2">
+        <p className="text-xs uppercase tracking-[0.25em] text-slate-400">
+          CalmBand
+        </p>
+        <h1 className="text-2xl font-semibold text-white">
+          {isSignUp ? "Create your account" : "Welcome back"}
+        </h1>
+        <p className="text-sm text-slate-300">
+          {isSignUp
+            ? "Sign up to access your dashboard."
+            : "Sign in to continue."}
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {isSignUp && (
+          <div className="space-y-2">
+            <Label htmlFor="displayName">Display name</Label>
+            <Input
+              id="displayName"
+              value={displayName}
+              onChange={(event) => setDisplayName(event.target.value)}
+              placeholder="Calm caregiver"
+              autoComplete="name"
+            />
+          </div>
+        )}
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="you@example.com"
+            autoComplete="email"
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="password">Password</Label>
+          <Input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder="Minimum 6 characters"
+            autoComplete={isSignUp ? "new-password" : "current-password"}
+            minLength={6}
+            required
+          />
+        </div>
+
+        {error && (
+          <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+            {error}
+          </p>
+        )}
+
+        {info && (
+          <p className="rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-sm text-emerald-200">
+            {info}
+          </p>
+        )}
+
+        <Button type="submit" className="w-full" disabled={loading}>
+          {loading
+            ? "Working..."
+            : isSignUp
+            ? "Create account"
+            : "Sign in"}
+        </Button>
+      </form>
+
+      <div className="text-sm text-slate-400">
+        {isSignUp ? "Already have an account?" : "Need an account?"} {" "}
+        <Link
+          href={isSignUp ? "/sign-in" : "/sign-up"}
+          className="text-white"
+        >
+          {isSignUp ? "Sign in" : "Sign up"}
+        </Link>
+      </div>
+    </Card>
+  );
+}
