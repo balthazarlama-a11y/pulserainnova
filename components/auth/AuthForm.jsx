@@ -47,7 +47,9 @@ export default function AuthForm({ mode }) {
     const { error: resendError } = await supabase.auth.resend({
       type: "signup",
       email,
-      options: origin ? { emailRedirectTo: `${origin}/sign-in` } : undefined
+      options: {
+        emailRedirectTo: `${origin}/auth/callback`
+      }
     });
 
     if (resendError) {
@@ -69,13 +71,15 @@ export default function AuthForm({ mode }) {
 
     try {
       if (isSignUp) {
+        const origin = typeof window !== "undefined" ? window.location.origin : "";
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: {
               display_name: displayName
-            }
+            },
+            emailRedirectTo: `${origin}/auth/callback`
           }
         });
 
