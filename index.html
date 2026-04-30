@@ -1,162 +1,840 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <title>CalmBand</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com"/>
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-    <style>
-      :root {
-        --bg-2: #0A0A1A;
-        --ink: #F7F4FF;
-        --ink-muted: rgba(247, 244, 255, 0.72);
-        --ink-dim: rgba(247, 244, 255, 0.56);
-        --ink-faint: rgba(247, 244, 255, 0.36);
-        --border: rgba(255, 255, 255, 0.08);
-        --border-strong: rgba(255, 255, 255, 0.16);
-        --surface: rgba(255, 255, 255, 0.04);
-        --calm: #5EDC9A;
-        --mild: #F5D06F;
-        --moderate: #F59E4C;
-        --high: #EC5B6B;
-        --purple: #B8A4FF;
-        --mint: #A8E6CF;
-        --coral: #FF8B8B;
-      }
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="PulseraInnova — Monitoreo de ansiedad en tiempo real con pulsera Bluetooth y recomendaciones IA">
+<title>PulseraInnova — Bienestar Emocional en Tiempo Real</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ===== RESET ===== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#080b10;--sf:#0f1419;--sf2:#151c24;--border:rgba(255,255,255,0.07);--text:#e2e8f0;--text2:#7a8ba3;
+--calm:#10b981;--warn:#f59e0b;--danger:#ef4444;--nvidia:#76b900;--accent:#6366f1;
+--radius:14px;--font:'Space Grotesk',sans-serif;--mono:'JetBrains Mono',monospace}
+html{font-size:14px;scroll-behavior:smooth}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh}
+a{color:var(--calm);text-decoration:none}
+/* ===== NAV LANDING ===== */
+.nav-landing{display:flex;align-items:center;justify-content:space-between;padding:1.2rem 2.5rem;border-bottom:1px solid var(--border);background:rgba(8,11,16,.85);backdrop-filter:blur(12px);position:sticky;top:0;z-index:50}
+.nav-brand{font-size:1.3rem;font-weight:700;letter-spacing:-.02em}
+.nav-actions{display:flex;gap:.6rem}
+/* ===== HERO ===== */
+.hero{display:flex;align-items:center;justify-content:center;gap:4rem;padding:6rem 2.5rem 4rem;max-width:1100px;margin:0 auto;min-height:70vh}
+.hero-text{max-width:520px}
+.hero-text h1{font-size:3rem;font-weight:700;line-height:1.15;letter-spacing:-.03em}
+.gradient-text{background:linear-gradient(135deg,var(--calm),#34d399,#6ee7b7);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero-sub{color:var(--text2);font-size:1.1rem;margin:1.2rem 0 2rem;line-height:1.7}
+.hero-btns{display:flex;gap:.8rem}
+.hero-svg{width:320px;height:320px;filter:drop-shadow(0 0 40px rgba(16,185,129,.15))}
+/* ===== FEATURES ===== */
+.features{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.5rem;padding:4rem 2.5rem;max-width:1100px;margin:0 auto}
+.feature-card{background:var(--sf);border:1px solid var(--border);border-radius:var(--radius);padding:2rem;transition:border-color .3s,transform .3s}
+.feature-card:hover{border-color:rgba(16,185,129,.3);transform:translateY(-2px)}
+.feature-icon{margin-bottom:1rem}
+.feature-card h3{font-size:1.15rem;margin-bottom:.5rem}
+.feature-card p{color:var(--text2);font-size:.9rem;line-height:1.6}
+/* ===== HOW IT WORKS ===== */
+.how-it-works{padding:4rem 2.5rem;max-width:1100px;margin:0 auto;text-align:center}
+.how-it-works h2{font-size:2rem;margin-bottom:2.5rem}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:2rem}
+.step{padding:1.5rem}
+.step-num{font-family:var(--mono);font-size:3.5rem;font-weight:700;color:var(--calm);opacity:.3;line-height:1}
+.step h3{margin:.8rem 0 .5rem;font-size:1.05rem}
+.step p{color:var(--text2);font-size:.88rem;line-height:1.6}
+.footer{text-align:center;padding:2rem;color:var(--text2);font-size:.75rem;border-top:1px solid var(--border);margin-top:3rem}
+/* ===== AUTH ===== */
+.auth-container{max-width:420px;margin:8vh auto;padding:2.5rem;background:var(--sf);border:1px solid var(--border);border-radius:20px}
+.auth-logo{text-align:center;font-size:1.3rem;font-weight:700;margin-bottom:1.5rem;cursor:pointer}
+.auth-tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:1.5rem}
+.auth-tab{flex:1;padding:.7rem;background:none;border:none;color:var(--text2);font-family:var(--font);font-size:.9rem;cursor:pointer;border-bottom:2px solid transparent;transition:.2s}
+.auth-tab.active{color:var(--calm);border-bottom-color:var(--calm)}
+.auth-form{display:flex;flex-direction:column;gap:1rem}
+.input-group{display:flex;flex-direction:column;gap:.3rem}
+.input-group label{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2)}
+.input-group input,.input-group select{background:var(--sf2);border:1px solid var(--border);color:var(--text);padding:.6rem .8rem;border-radius:10px;font-family:var(--mono);font-size:.85rem}
+.input-group input:focus,.input-group select:focus{outline:none;border-color:var(--calm)}
+.input-row{display:flex;gap:.8rem}
+.input-row .input-group{flex:1}
+.auth-switch{text-align:center;font-size:.82rem;color:var(--text2);margin-top:.5rem}
+.auth-error{color:var(--danger);text-align:center;font-size:.82rem;min-height:1.2em;margin-top:.5rem}
+/* ===== BUTTONS ===== */
+.btn{font-family:var(--font);padding:.55rem 1.1rem;border-radius:10px;border:1px solid var(--border);background:var(--sf2);color:var(--text);cursor:pointer;font-size:.82rem;transition:all .2s;display:inline-flex;align-items:center;gap:.4rem}
+.btn:hover{transform:scale(.97);filter:brightness(1.15)}
+.btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
+.btn-primary{background:var(--calm);border-color:var(--calm);color:#000;font-weight:600}
+.btn-primary:hover{background:#0ea573}
+.btn-ghost{background:transparent;border-color:transparent;color:var(--text2)}
+.btn-ghost:hover{color:var(--text)}
+.btn-outline{border-color:var(--calm);color:var(--calm);background:transparent}
+.btn-danger{border-color:var(--danger);color:var(--danger);background:transparent}
+.btn-block{width:100%;justify-content:center;padding:.7rem}
+.btn-lg{padding:.7rem 1.5rem;font-size:.92rem}
+.btn-sm{padding:.35rem .7rem;font-size:.72rem}
+/* ===== DASHBOARD HEADER ===== */
+.dash-header{display:flex;align-items:center;justify-content:space-between;padding:.8rem 2rem;border-bottom:1px solid var(--border);background:rgba(15,20,25,.9);backdrop-filter:blur(10px);position:sticky;top:0;z-index:40;flex-wrap:wrap;gap:.5rem}
+.dash-brand{font-weight:700;font-size:1.15rem}
+.dash-header-right{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap}
+.user-name{color:var(--text2);font-size:.82rem}
+.nvidia-badge{background:linear-gradient(135deg,#76b900,#9ae600);color:#000;font-size:.62rem;font-weight:700;padding:.2rem .55rem;border-radius:8px;letter-spacing:.04em}
+.nvidia-badge-sm{background:var(--nvidia);color:#000;font-size:.58rem;font-weight:700;padding:.15rem .4rem;border-radius:6px;margin-right:.3rem}
+.ble-status{display:flex;align-items:center;gap:.35rem;font-size:.78rem;color:var(--text2)}
+.ble-dot{width:8px;height:8px;border-radius:50%;background:var(--danger);transition:.3s}
+.ble-dot.on{background:var(--calm);box-shadow:0 0 8px var(--calm)}
+/* ===== DASHBOARD GRID ===== */
+.dash-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:1rem;padding:1.5rem 2rem;max-width:1500px;margin:0 auto}
+.card{background:var(--sf);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem;position:relative;overflow:hidden;transition:border-color .5s}
+.card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;opacity:.4;transition:background .5s}
+.card-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text2);margin-bottom:.8rem;display:flex;align-items:center;gap:.4rem}
+.card-bpm{grid-column:span 3;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.card-chart{grid-column:span 9}
+.card-metrics{grid-column:span 4}
+.card-breath{grid-column:span 3}
+.card-ai{grid-column:span 5}
+.card-history{grid-column:span 7;max-height:280px;overflow-y:auto}
+.card-controls{grid-column:span 5}
+.card-log{grid-column:span 7}
+@media(max-width:1024px){.card-bpm,.card-chart,.card-metrics,.card-breath,.card-ai,.card-history,.card-controls,.card-log{grid-column:span 12}.hero{flex-direction:column;text-align:center;padding:3rem 1.5rem}.hero-btns{justify-content:center}}
+@media(max-width:600px){.dash-grid{padding:1rem}.hero-text h1{font-size:2rem}.nav-landing,.dash-header{padding:.7rem 1rem}}
+/* ===== BPM ===== */
+.bpm-number{font-family:var(--mono);font-size:5.5rem;font-weight:700;line-height:1;transition:color .5s;animation:pulse-beat 1s ease-in-out infinite}
+@keyframes pulse-beat{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+.bpm-sub{font-size:.78rem;color:var(--text2);margin-top:.2rem}
+.anxiety-badge{display:inline-block;padding:.25rem .7rem;border-radius:16px;font-size:.75rem;font-weight:600;margin-top:.6rem;transition:all .5s}
+.bpm-trend{font-size:1.5rem;margin-top:.3rem}
+.anxiety-bar-wrap{width:85%;height:5px;background:rgba(255,255,255,.06);border-radius:3px;margin-top:.6rem;overflow:hidden}
+.anxiety-bar{height:100%;border-radius:3px;transition:width .6s,background .5s;width:0}
+/* ===== CHART ===== */
+.chart-wrap{position:relative;width:100%;height:240px}
+.chart-wrap canvas{width:100%!important;height:100%!important}
+/* ===== METRICS ===== */
+.met-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.met{background:var(--sf2);border-radius:10px;padding:.65rem;text-align:center}
+.met-val{font-family:var(--mono);font-size:1.5rem;font-weight:700;display:block}
+.met-lbl{font-size:.6rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);display:block;margin-top:.1rem}
+.met-sub{font-size:.6rem;display:block;margin-top:.1rem}
+/* ===== BREATHING ===== */
+.breath-circle-wrap{display:flex;flex-direction:column;align-items:center;gap:.8rem;padding:1rem 0}
+.breath-circle{width:100px;height:100px;border-radius:50%;background:radial-gradient(circle,rgba(16,185,129,.25),rgba(16,185,129,.05));border:2px solid var(--calm);animation:breathe 12s ease-in-out infinite}
+@keyframes breathe{0%{transform:scale(.6);opacity:.5}33.3%{transform:scale(1);opacity:1}50%{transform:scale(1);opacity:1}100%{transform:scale(.6);opacity:.5}}
+.breath-text{font-size:.9rem;color:var(--calm);font-weight:500;min-height:1.4em}
+/* ===== AI ===== */
+.ai-body{font-size:.9rem;line-height:1.7;min-height:3em;animation:fadeIn .5s}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.ai-meta{display:flex;justify-content:space-between;font-size:.65rem;color:var(--text2);margin-top:.6rem}
+.ai-progress{width:100%;height:3px;background:rgba(255,255,255,.05);border-radius:2px;margin-top:.4rem;overflow:hidden}
+.ai-progress-fill{height:100%;background:linear-gradient(90deg,var(--nvidia),#9ae600);border-radius:2px;transition:width .5s;width:0}
+/* ===== HISTORY ===== */
+.history-scroll{overflow-x:auto}
+.hist-table{width:100%;border-collapse:collapse;font-size:.7rem}
+.hist-table th{text-align:left;color:var(--text2);padding:.4rem;border-bottom:1px solid var(--border);font-weight:500}
+.hist-table td{padding:.35rem .4rem;border-bottom:1px solid rgba(255,255,255,.03);vertical-align:top}
+.hist-table td:first-child{font-family:var(--mono);color:var(--text2);white-space:nowrap}
+/* ===== CONTROLS ===== */
+.ctrl-btns{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.6rem}
+.scenario-btns{display:flex;flex-wrap:wrap;gap:.35rem}
+.ble-warning{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:10px;padding:.7rem;font-size:.78rem;color:var(--warn);margin-top:.6rem;line-height:1.5}
+/* ===== LOG ===== */
+.log-toggle{cursor:pointer;user-select:none}
+.log-body{max-height:180px;overflow-y:auto;font-family:var(--mono);font-size:.68rem;color:var(--text2)}
+.log-entry{padding:.15rem 0;border-bottom:1px solid rgba(255,255,255,.02)}
+.log-time{color:var(--calm);margin-right:.4rem}
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+</style>
+</head>
+<body>
 
-      * { box-sizing: border-box; }
+<!-- ========== LANDING ========== -->
+<div id="view-landing" class="view">
+  <!-- Hero -->
+  <nav class="nav-landing"><div class="nav-brand">💚 PulseraInnova</div><div class="nav-actions"><button class="btn btn-ghost" onclick="navigateTo('auth','login')">Iniciar sesión</button><button class="btn btn-primary" onclick="navigateTo('auth','register')">Crear cuenta</button></div></nav>
+  <section class="hero">
+    <div class="hero-text">
+      <h1>Tu bienestar emocional,<br><span class="gradient-text">monitorado en tiempo real</span></h1>
+      <p class="hero-sub">Conectá tu pulsera, detectá patrones de ansiedad y recibí recomendaciones personalizadas impulsadas por inteligencia artificial.</p>
+      <div class="hero-btns"><button class="btn btn-primary btn-lg" onclick="navigateTo('auth','register')">Comenzar ahora</button><button class="btn btn-ghost btn-lg" onclick="navigateTo('auth','login')">Ya tengo cuenta</button></div>
+    </div>
+    <div class="hero-visual">
+      <svg viewBox="0 0 320 320" class="hero-svg"><circle cx="160" cy="160" r="80" fill="none" stroke="#10b981" stroke-width="3" opacity="0.3"><animate attributeName="r" values="80;120;80" dur="4s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.3;0.05;0.3" dur="4s" repeatCount="indefinite"/></circle><circle cx="160" cy="160" r="60" fill="none" stroke="#10b981" stroke-width="2" opacity="0.5"><animate attributeName="r" values="60;95;60" dur="3.5s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.5;0.1;0.5" dur="3.5s" repeatCount="indefinite"/></circle><circle cx="160" cy="160" r="40" fill="#10b981" opacity="0.15"/><rect x="120" y="145" rx="15" ry="15" width="80" height="30" fill="none" stroke="#10b981" stroke-width="2.5"/><line x1="140" y1="160" x2="148" y2="152" stroke="#10b981" stroke-width="2" stroke-linecap="round"/><line x1="148" y1="152" x2="155" y2="168" stroke="#10b981" stroke-width="2" stroke-linecap="round"/><line x1="155" y1="168" x2="162" y2="148" stroke="#10b981" stroke-width="2" stroke-linecap="round"/><line x1="162" y1="148" x2="170" y2="160" stroke="#10b981" stroke-width="2" stroke-linecap="round"/><line x1="170" y1="160" x2="180" y2="160" stroke="#10b981" stroke-width="2" stroke-linecap="round"/></svg>
+    </div>
+  </section>
+  <!-- Features -->
+  <section class="features" id="features">
+    <div class="feature-card"><div class="feature-icon"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#10b981" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 000-7.78z"/></svg></div><h3>Detectá tu ansiedad</h3><p>Medición continua de frecuencia cardíaca y variabilidad (HRV) para identificar estados de ansiedad en tiempo real.</p></div>
+    <div class="feature-card"><div class="feature-icon"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#76b900" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div><h3>Recomendaciones IA</h3><p>Inteligencia artificial de NVIDIA analiza tu estado emocional y te ofrece consejos personalizados al instante.</p></div>
+    <div class="feature-card"><div class="feature-icon"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#06b6d4" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg></div><h3>Historial de sesiones</h3><p>Seguí tu progreso a lo largo del tiempo, exportá datos y descubrí qué estrategias te funcionan mejor.</p></div>
+  </section>
+  <!-- Cómo funciona -->
+  <section class="how-it-works">
+    <h2>¿Cómo funciona?</h2>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><h3>Conectá tu pulsera</h3><p>Vinculá tu dispositivo vía Bluetooth Low Energy desde el navegador.</p></div>
+      <div class="step"><div class="step-num">2</div><h3>Análisis en tiempo real</h3><p>La app analiza tu frecuencia cardíaca y variabilidad para estimar tu nivel de ansiedad.</p></div>
+      <div class="step"><div class="step-num">3</div><h3>Recibí recomendaciones</h3><p>La IA te ofrece sugerencias personalizadas para reducir la ansiedad en el momento.</p></div>
+    </div>
+  </section>
+  <footer class="footer">© PulseraInnova 2027 | ID: 79905e07-9e62-4f3d-a</footer>
+</div>
 
-      html, body {
-        width: 100%;
-        height: 100%;
-        margin: 0;
-        padding: 0;
-        background: var(--bg-2);
-        color: var(--ink);
-        font-family: "Inter", sans-serif;
-        -webkit-font-smoothing: antialiased;
-        text-rendering: optimizeLegibility;
-      }
+<!-- ========== AUTH ========== -->
+<div id="view-auth" class="view" style="display:none">
+  <div class="auth-container">
+    <div class="auth-logo" onclick="navigateTo('landing')">💚 PulseraInnova</div>
+    <div class="auth-tabs"><button class="auth-tab active" id="tabLogin" onclick="showAuthTab('login')">Iniciar sesión</button><button class="auth-tab" id="tabRegister" onclick="showAuthTab('register')">Crear cuenta</button></div>
+    <!-- Login -->
+    <form id="formLogin" class="auth-form" onsubmit="handleLogin(event)">
+      <div class="input-group"><label>Email</label><input type="email" id="loginEmail" required placeholder="tu@email.com"></div>
+      <div class="input-group"><label>Contraseña</label><input type="password" id="loginPass" required placeholder="••••••••"></div>
+      <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+      <p class="auth-switch">¿No tenés cuenta? <a href="#" onclick="showAuthTab('register')">Registrate</a></p>
+    </form>
+    <!-- Registro -->
+    <form id="formRegister" class="auth-form" style="display:none" onsubmit="handleRegister(event)">
+      <div class="input-group"><label>Nombre completo</label><input type="text" id="regNombre" required placeholder="Tu nombre"></div>
+      <div class="input-group"><label>Email</label><input type="email" id="regEmail" required placeholder="tu@email.com"></div>
+      <div class="input-row">
+        <div class="input-group"><label>Contraseña</label><input type="password" id="regPass" required placeholder="••••••••"></div>
+        <div class="input-group"><label>Confirmar</label><input type="password" id="regPass2" required placeholder="••••••••"></div>
+      </div>
+      <div class="input-row">
+        <div class="input-group"><label>Edad</label><input type="number" id="regEdad" value="28" min="10" max="100"></div>
+        <div class="input-group"><label>Peso (kg)</label><input type="number" id="regPeso" value="65" min="30" max="200"></div>
+        <div class="input-group"><label>Sexo</label><select id="regSexo"><option value="F">Femenino</option><option value="M">Masculino</option></select></div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Crear cuenta</button>
+      <p class="auth-switch">¿Ya tenés cuenta? <a href="#" onclick="showAuthTab('login')">Iniciá sesión</a></p>
+    </form>
+    <p id="authError" class="auth-error"></p>
+  </div>
+</div>
 
-      #root { min-height: 100vh; }
+<!-- ========== DASHBOARD ========== -->
+<div id="view-dashboard" class="view" style="display:none">
+  <!-- Header -->
+  <header class="dash-header">
+    <div class="dash-brand">💚 PulseraInnova</div>
+    <div class="dash-header-right">
+      <span class="nvidia-badge">⚡ NVIDIA AI</span>
+      <span class="user-name" id="dashUserName"></span>
+      <div class="ble-status" id="bleStatus"><span class="ble-dot" id="bleDot"></span><span id="bleText">Desconectado</span></div>
+      <button class="btn btn-ghost btn-sm" onclick="handleLogout()">Cerrar sesión</button>
+    </div>
+  </header>
 
-      button, input, textarea { font-family: inherit; }
+  <main class="dash-grid">
+    <!-- BPM principal -->
+    <section class="card card-bpm" id="cardBpm">
+      <div class="card-label">Frecuencia Cardíaca</div>
+      <div class="bpm-number" id="bpmValue">--</div>
+      <div class="bpm-sub">BPM</div>
+      <div class="anxiety-badge" id="anxietyBadge">Sin datos</div>
+      <div class="bpm-trend" id="bpmTrend">→</div>
+      <div class="anxiety-bar-wrap"><div class="anxiety-bar" id="anxietyBar"></div></div>
+    </section>
 
-      a { color: inherit; }
+    <!-- Gráfico -->
+    <section class="card card-chart">
+      <div class="card-label">Frecuencia cardíaca — últimos 72s</div>
+      <div class="chart-wrap"><canvas id="chartCanvas"></canvas></div>
+    </section>
 
-      @keyframes heroTextIn {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
+    <!-- Métricas -->
+    <section class="card card-metrics">
+      <div class="card-label">Métricas</div>
+      <div class="met-grid">
+        <div class="met"><span class="met-val" id="metHRV">--</span><span class="met-lbl">HRV</span><span class="met-sub" id="metHRVsub"></span></div>
+        <div class="met"><span class="met-val" id="metAnxiety">--</span><span class="met-lbl">Ansiedad</span><span class="met-sub" id="metAnxietySub"></span></div>
+        <div class="met"><span class="met-val" id="metAvg">--</span><span class="met-lbl">Promedio 30s</span></div>
+        <div class="met"><span class="met-val" id="metTime">00:00</span><span class="met-lbl">Sesión</span></div>
+        <div class="met"><span class="met-val" id="metMin">--</span><span class="met-lbl">Mín</span></div>
+        <div class="met"><span class="met-val" id="metMax">--</span><span class="met-lbl">Máx</span></div>
+      </div>
+    </section>
 
-      @keyframes heroShapeIn {
-        0% { opacity: 0; transform: translateY(-120px) rotate(0deg) scale(0.9); }
-        100% { opacity: 1; transform: translateY(0) rotate(0deg) scale(1); }
-      }
+    <!-- Respiración -->
+    <section class="card card-breath" id="cardBreath" style="display:none">
+      <div class="card-label">Guía de respiración</div>
+      <div class="breath-circle-wrap">
+        <div class="breath-circle" id="breathCircle"></div>
+        <div class="breath-text" id="breathText">Inhalá</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="btnBreathToggle" onclick="toggleBreathing()">Desactivar</button>
+    </section>
 
-      @keyframes heroShapeFloat {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(14px); }
-      }
+    <!-- IA Recomendación -->
+    <section class="card card-ai">
+      <div class="card-label"><span class="nvidia-badge-sm">⚡ NVIDIA AI</span> Recomendación</div>
+      <div class="ai-body" id="aiText">Conectá tu pulsera o iniciá la simulación para recibir recomendaciones.</div>
+      <div class="ai-meta"><span id="aiTimestamp"></span><span id="aiStatus">En espera</span></div>
+      <div class="ai-progress"><div class="ai-progress-fill" id="aiProgressFill"></div></div>
+    </section>
 
-      @keyframes sheen {
-        0% { background-position: -200% 0; }
-        100% { background-position: 200% 0; }
-      }
+    <!-- Historial -->
+    <section class="card card-history">
+      <div class="card-label">Historial de recomendaciones</div>
+      <div class="history-scroll">
+        <table class="hist-table"><thead><tr><th>Hora</th><th>BPM</th><th>HRV</th><th>Ansiedad</th><th>Nivel</th><th>Recomendación</th></tr></thead><tbody id="histBody"></tbody></table>
+      </div>
+    </section>
 
-      @keyframes float {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-10px); }
-      }
+    <!-- Controles -->
+    <section class="card card-controls">
+      <div class="card-label">Controles</div>
+      <div class="ctrl-btns">
+        <button class="btn btn-primary" id="btnConnect" onclick="initBluetooth()">🔗 Conectar pulsera</button>
+        <button class="btn btn-outline" id="btnSimulate" onclick="startSimulation()">▶ Modo simulación</button>
+        <button class="btn btn-danger" id="btnStop" onclick="stopAll()" disabled>⏹ Detener</button>
+        <button class="btn btn-outline" onclick="requestNvidiaAI('solicitud manual del usuario')">💬 Pedir consejo</button>
+        <button class="btn btn-ghost" onclick="exportCSV()">📥 Exportar CSV</button>
+      </div>
+      <div class="scenario-btns" id="scenarioBtns">
+        <button class="btn btn-sm" onclick="setScenario('calma')">😌 Calma</button>
+        <button class="btn btn-sm" onclick="setScenario('estres')">😟 Estrés leve</button>
+        <button class="btn btn-sm" onclick="setScenario('ansiedad')">😰 Ansiedad activa</button>
+        <button class="btn btn-sm" onclick="setScenario('crisis')">🆘 Crisis</button>
+      </div>
+      <div id="bleWarning" class="ble-warning" style="display:none">⚠️ Tu navegador no soporta Web Bluetooth. Usá Google Chrome para conectar tu pulsera. Mientras tanto, podés usar el modo simulación.</div>
+    </section>
 
-      @keyframes pulse {
-        0% { transform: scale(0.95); opacity: 0.7; }
-        70% { transform: scale(1); opacity: 1; }
-        100% { transform: scale(0.95); opacity: 0.7; }
-      }
+    <!-- Log técnico -->
+    <section class="card card-log">
+      <div class="card-label log-toggle" onclick="toggleLog()">🔧 Log técnico <span id="logArrow">▼</span></div>
+      <div class="log-body" id="logBody"></div>
+    </section>
+  </main>
+</div>
 
-      @keyframes pulse-ring {
-        0% { transform: scale(0.7); opacity: 0.9; }
-        100% { transform: scale(1.2); opacity: 0; }
-      }
+<script>
+// ===================== API KEY NVIDIA =====================
+// Clave de API para NVIDIA NIM (recomendaciones IA)
+const NVIDIA_API_KEY = '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';
 
-      @keyframes spin-slow {
-        to { transform: rotate(360deg); }
-      }
+// ===================== ESTADO GLOBAL =====================
+const S = {
+  connected: false, simulating: false, device: null, char: null,
+  bpmHistory: [], allBpm: [], sessionStart: null, scenario: 'calma',
+  anxietyLevel: -1, lastAiCall: 0, reconnects: 0,
+  simInterval: null, simBpm: 65, bpm5s: [],
+  breathingActive: false, breathingManual: false
+};
 
-      @media (max-width: 980px) {
-        .nav-links { display: none !important; }
-        .auth-left { display: none !important; }
-        .auth-left + div {
-          width: 100% !important;
-          padding: 48px 28px !important;
-        }
-      }
+// ===================== NIVELES DE ANSIEDAD =====================
+const LEVELS = [
+  { name: 'Relajado', min: 0, max: 25, color: '#10b981' },
+  { name: 'Atento', min: 26, max: 50, color: '#06b6d4' },
+  { name: 'Tenso', min: 51, max: 75, color: '#f59e0b' },
+  { name: 'Alta ansiedad', min: 76, max: 100, color: '#ef4444' }
+];
+function getLevel(idx) { for (let i = LEVELS.length-1; i >= 0; i--) { if (idx >= LEVELS[i].min) return i; } return 0; }
 
-      @media (max-width: 1100px) {
-        .dashboard-sidebar {
-          position: static !important;
-          width: 100% !important;
-          height: auto !important;
-          flex-direction: row !important;
-          justify-content: space-between !important;
-          padding: 16px 18px !important;
-          border-right: none !important;
-          border-bottom: 1px solid var(--border) !important;
-          background: rgba(10,10,26,0.75) !important;
-        }
+// ===================== NAVEGACIÓN SPA =====================
+function navigateTo(view, tab) {
+  document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
+  document.getElementById('view-' + view).style.display = '';
+  if (view === 'auth' && tab) showAuthTab(tab);
+  if (view === 'dashboard') initDashboard();
+}
+function showAuthTab(tab) {
+  document.getElementById('formLogin').style.display = tab === 'login' ? 'flex' : 'none';
+  document.getElementById('formRegister').style.display = tab === 'register' ? 'flex' : 'none';
+  document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
+  document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
+  document.getElementById('authError').textContent = '';
+}
 
-        .dashboard-sidebar > div:nth-child(2) {
-          flex: 1 !important;
-          flex-direction: row !important;
-          justify-content: center !important;
-          gap: 8px !important;
-        }
+// ===================== AUTENTICACIÓN =====================
+function handleLogin(e) {
+  e.preventDefault();
+  const email = document.getElementById('loginEmail').value;
+  const pass = document.getElementById('loginPass').value;
+  if (!email || !pass) { document.getElementById('authError').textContent = 'Completá todos los campos'; return; }
+  const user = JSON.parse(localStorage.getItem('pulserainnova_user') || 'null');
+  const nombre = (user && user.email === email) ? user.nombre : email.split('@')[0];
+  sessionStorage.setItem('pulserainnova_session', JSON.stringify({ email, nombre }));
+  navigateTo('dashboard');
+}
+function handleRegister(e) {
+  e.preventDefault();
+  const nombre = document.getElementById('regNombre').value;
+  const email = document.getElementById('regEmail').value;
+  const pass = document.getElementById('regPass').value;
+  const pass2 = document.getElementById('regPass2').value;
+  if (!nombre || !email || !pass) { document.getElementById('authError').textContent = 'Completá todos los campos'; return; }
+  if (pass !== pass2) { document.getElementById('authError').textContent = 'Las contraseñas no coinciden'; return; }
+  const user = { nombre, email, edad: +document.getElementById('regEdad').value || 28,
+    peso: +document.getElementById('regPeso').value || 65, sexo: document.getElementById('regSexo').value,
+    bpm_reposo: 65 };
+  localStorage.setItem('pulserainnova_user', JSON.stringify(user));
+  sessionStorage.setItem('pulserainnova_session', JSON.stringify({ email, nombre }));
+  navigateTo('dashboard');
+}
+function handleLogout() { stopAll(); sessionStorage.removeItem('pulserainnova_session'); navigateTo('landing'); }
+function getUser() {
+  return JSON.parse(localStorage.getItem('pulserainnova_user') || '{}');
+}
 
-        .dashboard-main {
-          margin-left: 0 !important;
-          padding: 24px 22px 80px !important;
-        }
+// ===================== DASHBOARD INIT =====================
+function initDashboard() {
+  const session = JSON.parse(sessionStorage.getItem('pulserainnova_session') || 'null');
+  if (!session) { navigateTo('landing'); return; }
+  document.getElementById('dashUserName').textContent = session.nombre;
+  if (!navigator.bluetooth) document.getElementById('bleWarning').style.display = 'block';
+  updateBreathingVisibility();
+}
 
-        .dashboard-row {
-          grid-template-columns: 1fr !important;
-        }
-      }
+// ===================== LOG TÉCNICO =====================
+function log(msg) {
+  const c = document.getElementById('logBody');
+  if (!c) return;
+  const t = new Date().toLocaleTimeString();
+  c.innerHTML = '<div class="log-entry"><span class="log-time">' + t + '</span>' + msg + '</div>' + c.innerHTML;
+  if (c.children.length > 80) c.removeChild(c.lastChild);
+}
+let logVis = true;
+function toggleLog() {
+  logVis = !logVis;
+  document.getElementById('logBody').style.display = logVis ? 'block' : 'none';
+  document.getElementById('logArrow').textContent = logVis ? '▼' : '▶';
+}
 
-      @media (max-width: 720px) {
-        .dashboard-stats {
-          grid-template-columns: repeat(2, 1fr) !important;
-        }
-      }
+// ===================== BLUETOOTH BLE =====================
+async function initBluetooth() {
+  if (!navigator.bluetooth) { alert('Tu navegador no soporta Web Bluetooth. Usá Chrome.'); return; }
+  try {
+    log('🔍 Buscando pulseras BLE...');
+    const device = await navigator.bluetooth.requestDevice({ filters: [{ services: ['heart_rate'] }] });
+    S.device = device;
+    device.addEventListener('gattserverdisconnected', onBLEDisconnect);
+    await connectGATT(device);
+  } catch (e) { log('❌ BLE: ' + e.message); }
+}
+async function connectGATT(device) {
+  try {
+    log('🔗 Conectando a ' + (device.name || 'dispositivo') + '...');
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService('heart_rate');
+    const char = await service.getCharacteristic('heart_rate_measurement');
+    await char.startNotifications();
+    char.addEventListener('characteristicvaluechanged', onHR);
+    S.char = char;
+    startSession();
+    log('✅ Conectado a ' + (device.name || 'pulsera'));
+  } catch (e) { log('❌ GATT: ' + e.message); }
+}
+function onHR(ev) {
+  const v = ev.target.value, flags = v.getUint8(0);
+  const bpm = (flags & 0x01) ? v.getUint16(1, true) : v.getUint8(1);
+  processBPM(bpm);
+}
+function onBLEDisconnect() {
+  log('⚠️ Pulsera desconectada');
+  if (S.reconnects < 3 && S.device) {
+    S.reconnects++;
+    log('🔄 Reconexión ' + S.reconnects + '/3...');
+    setTimeout(() => connectGATT(S.device), 2000);
+  } else { S.connected = false; updateBLEStatus(); log('❌ No se pudo reconectar'); }
+}
 
-      @media (max-width: 520px) {
-        .dashboard-stats {
-          grid-template-columns: 1fr !important;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <div id="root"></div>
+// ===================== SIMULACIÓN =====================
+const SCENARIOS = {
+  calma:    { base: 64, range: 6, trend: 0 },
+  estres:   { base: 80, range: 8, trend: 0.15 },
+  ansiedad: { base: 102, range: 12, trend: 0.1 },
+  crisis:   { base: 132, range: 13, trend: 0 }
+};
+function startSimulation() {
+  if (S.simulating) return;
+  S.simulating = true;
+  S.simBpm = SCENARIOS[S.scenario].base;
+  startSession();
+  log('▶ Simulación: ' + S.scenario);
+  S.simInterval = setInterval(() => {
+    const sc = SCENARIOS[S.scenario];
+    S.simBpm += sc.trend + (Math.random() - 0.5) * sc.range * 0.3;
+    S.simBpm += (sc.base - S.simBpm) * 0.06;
+    S.simBpm = Math.max(40, Math.min(180, S.simBpm));
+    processBPM(Math.round(S.simBpm));
+  }, 800);
+}
+function setScenario(sc) { S.scenario = sc; log('🔄 Escenario: ' + sc); if (!S.simulating) startSimulation(); }
+function stopAll() {
+  if (S.simInterval) clearInterval(S.simInterval);
+  S.simulating = false; S.connected = false;
+  if (S.char) try { S.char.stopNotifications(); } catch(e){}
+  if (S.device && S.device.gatt.connected) S.device.gatt.disconnect();
+  updateBLEStatus();
+  document.getElementById('btnStop').disabled = true;
+  log('⏹ Sesión detenida');
+}
+function startSession() {
+  S.connected = true; S.sessionStart = Date.now();
+  S.allBpm = []; S.bpmHistory = []; S.anxietyLevel = -1;
+  S.lastAiCall = 0; S.bpm5s = [];
+  document.getElementById('btnStop').disabled = false;
+  updateBLEStatus();
+}
+function updateBLEStatus() {
+  const dot = document.getElementById('bleDot');
+  const txt = document.getElementById('bleText');
+  if (S.connected || S.simulating) {
+    dot.classList.add('on');
+    txt.textContent = S.simulating ? 'Simulando (' + S.scenario + ')' : 'Conectado';
+  } else { dot.classList.remove('on'); txt.textContent = 'Desconectado'; }
+}
 
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Supabase JS v2 — conexión a base de datos -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+// ===================== PROCESAR BPM =====================
+function processBPM(bpm) {
+  const now = Date.now();
+  S.allBpm.push({ bpm, time: now });
+  S.bpmHistory.push(bpm);
+  if (S.bpmHistory.length > 90) S.bpmHistory.shift();
+  S.bpm5s.push({ bpm, time: now });
+  S.bpm5s = S.bpm5s.filter(r => now - r.time < 5000);
+  // Calcular métricas
+  const metrics = calculateMetrics(bpm, now);
+  // Nivel anterior
+  const prevLevel = S.anxietyLevel;
+  S.anxietyLevel = getLevel(metrics.anxiety);
+  // Actualizar UI
+  updateBPMDisplay(bpm, metrics);
+  updateMetricsDisplay(metrics, now);
+  renderChart();
+  updateBreathingVisibility(metrics.anxiety);
+  // IA
+  checkAITrigger(bpm, metrics, prevLevel);
+}
 
-    <script type="text/babel" data-presets="env,react" src="src/icons.jsx"></script>
-    <script type="text/babel" data-presets="env,react" src="src/primitives.jsx"></script>
-    <script type="text/babel" data-presets="env,react" src="src/bracelet.jsx"></script>
-    <script type="text/babel" data-presets="env,react" src="src/hero.jsx"></script>
-    <script type="text/babel" data-presets="env,react" src="src/supabase-client.jsx"></script>
-    <script type="text/babel" data-presets="env,react" src="src/landing.jsx"></script>
-    <script type="text/babel" data-presets="env,react" src="src/auth.jsx"></script>
-    <script type="text/babel" data-presets="env,react" src="src/pairing.jsx"></script>
-    <script type="text/babel" data-presets="env,react" src="src/dashboard.jsx"></script>
-    <script type="text/babel" data-presets="env,react" src="src/kids.jsx"></script>
-    <script type="text/babel" data-presets="env,react" src="src/app.jsx"></script>
-  </body>
+// ===================== CÁLCULOS =====================
+function calculateMetrics(bpm, now) {
+  const user = getUser();
+  const reposo = user.bpm_reposo || 65;
+  // HRV: desviación estándar de últimas 10 lecturas
+  const last10 = S.bpmHistory.slice(-10);
+  let hrv = 0;
+  if (last10.length >= 3) {
+    const m = last10.reduce((s, v) => s + v, 0) / last10.length;
+    hrv = Math.round(Math.sqrt(last10.reduce((s, v) => s + (v - m) ** 2, 0) / last10.length));
+  }
+  let hrvText = '', hrvColor = '';
+  if (hrv > 20) { hrvText = 'Alta — estado calmado'; hrvColor = '#10b981'; }
+  else if (hrv >= 10) { hrvText = 'Media — leve tensión'; hrvColor = '#f59e0b'; }
+  else { hrvText = 'Baja — posible ansiedad'; hrvColor = '#ef4444'; }
+  // Índice de ansiedad (0–100)
+  let anxiety = ((bpm - reposo) / reposo * 50) + ((20 - hrv) / 20 * 50);
+  anxiety = Math.max(0, Math.min(100, Math.round(anxiety)));
+  // Promedio 30s
+  const last30 = S.allBpm.filter(r => now - r.time < 30000);
+  const avg = last30.length ? Math.round(last30.reduce((s, r) => s + r.bpm, 0) / last30.length) : bpm;
+  // Min/Max
+  const bpms = S.allBpm.map(r => r.bpm);
+  const min = Math.min(...bpms), max = Math.max(...bpms);
+  // Tendencia
+  const prev30 = S.allBpm.filter(r => now - r.time >= 30000 && now - r.time < 60000);
+  let trend = '→';
+  if (last30.length >= 3 && prev30.length >= 3) {
+    const aL = last30.reduce((s, r) => s + r.bpm, 0) / last30.length;
+    const aP = prev30.reduce((s, r) => s + r.bpm, 0) / prev30.length;
+    if (aL - aP > 3) trend = '↑'; else if (aP - aL > 3) trend = '↓';
+  }
+  return { hrv, hrvText, hrvColor, anxiety, avg, min, max, trend, reposo };
+}
+
+// ===================== ACTUALIZAR DISPLAY BPM =====================
+function updateBPMDisplay(bpm, met) {
+  const el = document.getElementById('bpmValue');
+  const lvl = LEVELS[S.anxietyLevel];
+  el.textContent = bpm;
+  el.style.color = lvl.color;
+  el.style.animationDuration = Math.max(0.3, 60 / bpm) + 's';
+  // Badge
+  const badge = document.getElementById('anxietyBadge');
+  badge.textContent = lvl.name + ' (' + met.anxiety + '/100)';
+  badge.style.background = lvl.color + '18';
+  badge.style.color = lvl.color;
+  // Borde card
+  document.getElementById('cardBpm').style.borderColor = lvl.color + '44';
+  // Tendencia
+  const tr = document.getElementById('bpmTrend');
+  tr.textContent = met.trend;
+  tr.style.color = met.trend === '↑' ? '#ef4444' : met.trend === '↓' ? '#10b981' : '#7a8ba3';
+  // Barra de ansiedad
+  const bar = document.getElementById('anxietyBar');
+  bar.style.width = met.anxiety + '%';
+  bar.style.background = lvl.color;
+}
+
+// ===================== ACTUALIZAR MÉTRICAS =====================
+function updateMetricsDisplay(met, now) {
+  document.getElementById('metHRV').textContent = met.hrv;
+  const hrvSub = document.getElementById('metHRVsub');
+  hrvSub.textContent = met.hrvText;
+  hrvSub.style.color = met.hrvColor;
+  document.getElementById('metAnxiety').textContent = met.anxiety;
+  const anxSub = document.getElementById('metAnxietySub');
+  anxSub.textContent = LEVELS[S.anxietyLevel].name;
+  anxSub.style.color = LEVELS[S.anxietyLevel].color;
+  document.getElementById('metAvg').textContent = met.avg;
+  document.getElementById('metMin').textContent = met.min;
+  document.getElementById('metMax').textContent = met.max;
+  if (S.sessionStart) {
+    const s = Math.floor((now - S.sessionStart) / 1000);
+    document.getElementById('metTime').textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+  }
+}
+
+// ===================== GRÁFICO CANVAS =====================
+function renderChart() {
+  const canvas = document.getElementById('chartCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width * 2; canvas.height = rect.height * 2;
+  ctx.scale(2, 2);
+  const W = rect.width, H = rect.height;
+  const data = S.bpmHistory;
+  if (data.length < 2) { ctx.clearRect(0, 0, W, H); return; }
+  const pad = { l: 38, r: 12, t: 12, b: 22 };
+  const gW = W - pad.l - pad.r, gH = H - pad.t - pad.b;
+  const yMin = 40, yMax = 160;
+  ctx.clearRect(0, 0, W, H);
+  // Fondo según nivel
+  if (S.anxietyLevel >= 0) {
+    ctx.fillStyle = LEVELS[S.anxietyLevel].color + '06';
+    ctx.fillRect(pad.l, pad.t, gW, gH);
+  }
+  // Grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  ctx.fillStyle = '#4a5568';
+  ctx.font = '9px "JetBrains Mono"';
+  ctx.textAlign = 'right';
+  [60, 80, 100, 120, 140].forEach(v => {
+    const y = pad.t + gH - ((v - yMin) / (yMax - yMin)) * gH;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke();
+    ctx.fillText(v, pad.l - 4, y + 3);
+  });
+  // Labels X
+  ctx.textAlign = 'center';
+  ctx.fillText('ahora', W - pad.r, H - 4);
+  ctx.fillText('-30s', pad.l + gW * 0.5, H - 4);
+  ctx.fillText('-60s', pad.l + gW * 0.17, H - 4);
+  // Puntos
+  const pts = data.map((v, i) => ({
+    x: pad.l + (i / 89) * gW,
+    y: pad.t + gH - ((Math.min(Math.max(v, yMin), yMax) - yMin) / (yMax - yMin)) * gH
+  }));
+  // Área
+  const lc = S.anxietyLevel >= 0 ? LEVELS[S.anxietyLevel].color : '#10b981';
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pad.t + gH);
+  ctx.lineTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length; i++) {
+    const cx = (pts[i-1].x + pts[i].x) / 2;
+    ctx.bezierCurveTo(cx, pts[i-1].y, cx, pts[i].y, pts[i].x, pts[i].y);
+  }
+  ctx.lineTo(pts[pts.length-1].x, pad.t + gH);
+  ctx.closePath();
+  const gr = ctx.createLinearGradient(0, pad.t, 0, pad.t + gH);
+  gr.addColorStop(0, lc + '35'); gr.addColorStop(1, lc + '03');
+  ctx.fillStyle = gr; ctx.fill();
+  // Línea
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length; i++) {
+    const cx = (pts[i-1].x + pts[i].x) / 2;
+    ctx.bezierCurveTo(cx, pts[i-1].y, cx, pts[i].y, pts[i].x, pts[i].y);
+  }
+  ctx.strokeStyle = lc; ctx.lineWidth = 2; ctx.stroke();
+  // Línea BPM reposo
+  const user = getUser();
+  const rep = user.bpm_reposo || 65;
+  const repY = pad.t + gH - ((Math.min(Math.max(rep, yMin), yMax) - yMin) / (yMax - yMin)) * gH;
+  ctx.setLineDash([3, 3]); ctx.strokeStyle = 'rgba(16,185,129,0.3)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pad.l, repY); ctx.lineTo(W - pad.r, repY); ctx.stroke();
+  // Línea promedio
+  const avgVal = data.reduce((s, v) => s + v, 0) / data.length;
+  const avgY = pad.t + gH - ((Math.min(Math.max(avgVal, yMin), yMax) - yMin) / (yMax - yMin)) * gH;
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.beginPath(); ctx.moveTo(pad.l, avgY); ctx.lineTo(W - pad.r, avgY); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.font = '8px "JetBrains Mono"'; ctx.textAlign = 'left';
+  ctx.fillText('avg ' + Math.round(avgVal), W - pad.r - 38, avgY - 3);
+  ctx.fillText('rep ' + rep, W - pad.r - 38, repY - 3);
+  // Punto final
+  const lp = pts[pts.length - 1];
+  ctx.beginPath(); ctx.arc(lp.x, lp.y, 4, 0, Math.PI * 2); ctx.fillStyle = lc; ctx.fill();
+  ctx.beginPath(); ctx.arc(lp.x, lp.y, 7, 0, Math.PI * 2); ctx.strokeStyle = lc + '44'; ctx.lineWidth = 2; ctx.stroke();
+}
+
+// ===================== RESPIRACIÓN =====================
+let breathPhase = 0, breathTimer = null;
+const BREATH_PHASES = [
+  { text: 'Inhalá lentamente...', dur: 4000 },
+  { text: 'Mantené...', dur: 2000 },
+  { text: 'Exhalá despacio...', dur: 6000 }
+];
+function startBreathCycle() {
+  if (breathTimer) return;
+  function next() {
+    const ph = BREATH_PHASES[breathPhase % 3];
+    const el = document.getElementById('breathText');
+    if (el) el.textContent = ph.text;
+    breathTimer = setTimeout(() => { breathPhase++; next(); }, ph.dur);
+  }
+  next();
+}
+function stopBreathCycle() { if (breathTimer) clearTimeout(breathTimer); breathTimer = null; }
+function updateBreathingVisibility(anxiety) {
+  const card = document.getElementById('cardBreath');
+  if (!card) return;
+  const shouldShow = anxiety > 50 || S.breathingManual;
+  card.style.display = shouldShow ? '' : 'none';
+  if (shouldShow && !breathTimer) startBreathCycle();
+  if (!shouldShow) stopBreathCycle();
+}
+function toggleBreathing() {
+  S.breathingManual = !S.breathingManual;
+  document.getElementById('btnBreathToggle').textContent = S.breathingManual ? 'Desactivar' : 'Activar';
+  updateBreathingVisibility(S.anxietyLevel >= 0 ? LEVELS[S.anxietyLevel].min : 0);
+}
+
+// ===================== NVIDIA AI =====================
+async function requestNvidiaAI(motivo) {
+  const now = Date.now();
+  if (now - S.lastAiCall < 15000) { log('⏳ IA en cooldown'); return; }
+  S.lastAiCall = now;
+  if (S.allBpm.length < 3) return;
+  const bpm = S.allBpm[S.allBpm.length - 1].bpm;
+  const met = calculateMetrics(bpm, now);
+  const lvl = LEVELS[getLevel(met.anxiety)];
+  const tiempo = S.sessionStart ? Math.floor((now - S.sessionStart) / 1000) + 's' : '0s';
+
+  const aiText = document.getElementById('aiText');
+  const aiStatus = document.getElementById('aiStatus');
+  aiText.textContent = 'Analizando tu estado emocional...';
+  aiText.style.opacity = '0.5';
+  aiStatus.textContent = 'Consultando...';
+  log('🤖 IA solicitada: ' + motivo);
+
+  const prompt = 'Mi pulsera detecta: BPM ' + bpm + ', HRV ' + met.hrv + ' (' + met.hrvText +
+    '), índice de ansiedad ' + met.anxiety + '/100 (' + lvl.name +
+    '), llevo ' + tiempo + ' en sesión. Motivo: ' + motivo + '. Dame una recomendación.';
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const res = await fetch('/api/nvidia', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Nvidia-Key': NVIDIA_API_KEY },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: 'meta/llama-3.1-8b-instruct',
+        messages: [
+          { role: 'system', content: 'Eres un asistente de bienestar emocional empático. El usuario usa una pulsera que monitorea su ansiedad en tiempo real. Respondé siempre en español, de forma cálida y concreta. Máximo 2 oraciones. Sin asteriscos ni markdown. Nunca uses lenguaje deportivo.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 150
+      })
+    });
+    clearTimeout(timeout);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message || 'Error de API');
+    const texto = data.choices[0].message.content.trim();
+    aiText.style.opacity = '1';
+    aiText.textContent = texto;
+    aiText.style.animation = 'none';
+    void aiText.offsetWidth;
+    aiText.style.animation = 'fadeIn 0.5s';
+    // Color del borde izquierdo según estado
+    document.querySelector('.card-ai').style.borderLeftColor = lvl.color;
+    document.querySelector('.card-ai').style.borderLeftWidth = '3px';
+    aiStatus.textContent = 'Última: ' + new Date().toLocaleTimeString();
+    addHistory(bpm, met.hrv, met.anxiety, lvl.name, texto);
+    log('✅ IA: ' + texto.substring(0, 60) + '...');
+  } catch (e) {
+    clearTimeout(timeout);
+    aiText.style.opacity = '1';
+    if (e.name === 'AbortError') {
+      aiText.textContent = 'La consulta tardó demasiado. Respirá profundo, todo está bien. Intentaremos de nuevo pronto.';
+      log('⏱️ IA timeout');
+    } else {
+      aiText.textContent = 'No pudimos conectar con la IA en este momento. Recordá que respirar lento siempre ayuda. 💚';
+      log('❌ IA: ' + e.message);
+    }
+    aiStatus.textContent = 'Error — reintentando pronto';
+  }
+}
+
+// ===================== DISPAROS DE IA =====================
+function checkAITrigger(bpm, met, prevLevel) {
+  const now = Date.now();
+  if (!S.connected && !S.simulating) return;
+  if (now - S.lastAiCall < 15000) return;
+  let motivo = null;
+  // 1. Cada 30s
+  if (S.lastAiCall === 0 && S.allBpm.length > 8) motivo = 'inicio de sesión';
+  else if (now - S.lastAiCall >= 30000 && S.allBpm.length > 8) motivo = 'revisión periódica cada 30 segundos';
+  // 2. Spike BPM > 20 en 5s
+  if (!motivo && S.bpm5s.length >= 2) {
+    const vals = S.bpm5s.map(r => r.bpm);
+    if (Math.max(...vals) - Math.min(...vals) > 20) motivo = 'spike de BPM detectado';
+  }
+  // 3. Cambio de nivel
+  if (!motivo && prevLevel >= 0 && S.anxietyLevel !== prevLevel)
+    motivo = 'cruce de umbral de nivel';
+  // 4. Ansiedad > 75
+  if (!motivo && met.anxiety > 75) motivo = 'ansiedad en aumento sostenido';
+  if (motivo) requestNvidiaAI(motivo);
+  updateAIProgress();
+}
+function updateAIProgress() {
+  const elapsed = Date.now() - S.lastAiCall;
+  const pct = Math.min(100, (elapsed / 30000) * 100);
+  const fill = document.getElementById('aiProgressFill');
+  if (fill) fill.style.width = pct + '%';
+}
+setInterval(updateAIProgress, 1000);
+
+// ===================== HISTORIAL =====================
+function addHistory(bpm, hrv, anxiety, nivel, texto) {
+  const body = document.getElementById('histBody');
+  if (!body) return;
+  const tr = document.createElement('tr');
+  tr.innerHTML = '<td>' + new Date().toLocaleTimeString() + '</td><td>' + bpm + '</td><td>' + hrv +
+    '</td><td>' + anxiety + '</td><td>' + nivel + '</td><td>' + texto.substring(0, 60) + '…</td>';
+  body.insertBefore(tr, body.firstChild);
+  while (body.children.length > 10) body.removeChild(body.lastChild);
+}
+
+// ===================== EXPORTAR CSV =====================
+function exportCSV() {
+  if (S.allBpm.length === 0) { alert('No hay datos para exportar.'); return; }
+  let csv = 'timestamp,bpm,hrv,indice_ansiedad,nivel,recomendacion\n';
+  S.allBpm.forEach(r => {
+    const met = calculateMetrics(r.bpm, r.time);
+    const lvl = LEVELS[getLevel(met.anxiety)];
+    csv += new Date(r.time).toISOString() + ',' + r.bpm + ',' + met.hrv + ',' + met.anxiety + ',' + lvl.name + ',\n';
+  });
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'pulserainnova_' + new Date().toISOString().slice(0, 10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  log('📥 CSV exportado: ' + S.allBpm.length + ' lecturas');
+}
+
+// ===================== INICIALIZACIÓN =====================
+document.addEventListener('DOMContentLoaded', () => {
+  // Verificar si hay sesión activa → ir al dashboard
+  const session = sessionStorage.getItem('pulserainnova_session');
+  if (session) { navigateTo('dashboard'); }
+  // Si no, mostrar landing (ya visible por defecto)
+});
+</script>
+</body>
 </html>
