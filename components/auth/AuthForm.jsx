@@ -23,6 +23,12 @@ export default function AuthForm({ mode }) {
   const [resendStatus, setResendStatus] = useState("");
   const [resendLoading, setResendLoading] = useState(false);
 
+  const finishRedirect = (path) => {
+    setLoading(false);
+    router.push(path);
+    router.refresh();
+  };
+
   const shouldShowResend =
     resendStatus === "confirm" ||
     error.toLowerCase().includes("confirm") ||
@@ -61,66 +67,75 @@ export default function AuthForm({ mode }) {
     setInfo("");
     setResendStatus("");
 
-    if (isSignUp) {
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            display_name: displayName
+    try {
+      if (isSignUp) {
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              display_name: displayName
+            }
           }
-        }
-      });
+        });
 
-      if (signUpError) {
-        setError(signUpError.message);
+        if (signUpError) {
+          setError(signUpError.message);
+          setLoading(false);
+          return;
+        }
+
+        if (data?.session && data.user) {
+          await supabase.from("profiles").upsert({
+            id: data.user.id,
+            email,
+            display_name: displayName || null,
+            updated_at: new Date().toISOString()
+          });
+          finishRedirect("/dashboard");
+          return;
+        }
+
+        setInfo("Check your email to confirm your account.");
+        setResendStatus("confirm");
         setLoading(false);
         return;
       }
 
-      if (data?.session && data.user) {
-        await supabase.from("profiles").upsert({
-          id: data.user.id,
+      const { data: signInData, error: signInError } =
+        await supabase.auth.signInWithPassword({
           email,
-          display_name: displayName || null,
-          updated_at: new Date().toISOString()
+          password
         });
-        router.push("/dashboard");
-        router.refresh();
+
+      if (signInError) {
+        setError(signInError.message);
+        if (signInError.message.toLowerCase().includes("confirm")) {
+          setResendStatus("confirm");
+        }
+        setLoading(false);
         return;
       }
 
-      setInfo("Check your email to confirm your account.");
-      setResendStatus("confirm");
-      setLoading(false);
-      return;
-    }
-
-    const { data: signInData, error: signInError } =
-      await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-
-    if (signInError) {
-      setError(signInError.message);
-      if (signInError.message.toLowerCase().includes("confirm")) {
-        setResendStatus("confirm");
+      if (!signInData?.session) {
+        setError("Sign in failed. Please try again.");
+        setLoading(false);
+        return;
       }
+
+      if (signInData?.user) {
+        await supabase.from("profiles").upsert({
+          id: signInData.user.id,
+          email: signInData.user.email,
+          updated_at: new Date().toISOString()
+        });
+      }
+
+      finishRedirect("/dashboard");
+    } catch (err) {
+      setError(err?.message || "Unexpected error. Please try again.");
       setLoading(false);
-      return;
     }
-
-    if (signInData?.user) {
-      await supabase.from("profiles").upsert({
-        id: signInData.user.id,
-        email: signInData.user.email,
-        updated_at: new Date().toISOString()
-      });
-    }
-
-    router.push("/dashboard");
-    router.refresh();
   };
 
   return (
