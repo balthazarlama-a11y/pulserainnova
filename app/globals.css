@@ -59,3 +59,22 @@ a {
 @media (max-width: 980px) {
   .nav-links { display: none !important; }
 }
+
+html {
+  scroll-behavior: smooth;
+}
+
+@keyframes heroTextIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes charBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes sheen {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

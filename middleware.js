@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
-const PROTECTED_PATHS = ["/dashboard"];
+const PROTECTED_PATHS = ["/dashboard", "/kids", "/pairing", "/history"];
 const AUTH_PATHS = ["/sign-in", "/sign-up"];
 
 export async function middleware(request) {
@@ -26,6 +26,9 @@ export async function middleware(request) {
 export const config = {
   matcher: [
     "/dashboard/:path*",
+    "/kids/:path*",
+    "/pairing/:path*",
+    "/history/:path*",
     "/sign-in",
     "/sign-up",
     "/((?!_next/static|_next/image|favicon.ico).*)"

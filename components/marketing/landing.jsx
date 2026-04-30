@@ -21,6 +21,12 @@ import {
   IconWind
 } from "@/components/marketing/icons";
 
+const smoothScroll = (id) => {
+  if (typeof window === "undefined") return;
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+};
+
 const NavBar = ({ onSignIn, onSignUp }) => {
   const [scrolled, setScrolled] = React.useState(false);
 
@@ -67,22 +73,22 @@ const NavBar = ({ onSignIn, onSignUp }) => {
         <span style={{ fontWeight: 700, fontSize: 17, letterSpacing: -0.3 }}>CalmBand</span>
       </div>
       <div style={{ display: "flex", gap: 32, fontSize: 14, color: "var(--ink-muted)" }} className="nav-links">
-        <a href="#producto" style={{ color: "inherit", textDecoration: "none" }}>
+        <a href="#producto" onClick={(e) => { e.preventDefault(); smoothScroll("producto"); }} style={{ color: "inherit", textDecoration: "none", cursor: "pointer" }}>
           Producto
         </a>
-        <a href="#como-funciona" style={{ color: "inherit", textDecoration: "none" }}>
-          Como funciona
+        <a href="#features" onClick={(e) => { e.preventDefault(); smoothScroll("features"); }} style={{ color: "inherit", textDecoration: "none", cursor: "pointer" }}>
+          Características
         </a>
-        <a href="#familias" style={{ color: "inherit", textDecoration: "none" }}>
+        <a href="#how-it-works" onClick={(e) => { e.preventDefault(); smoothScroll("how-it-works"); }} style={{ color: "inherit", textDecoration: "none", cursor: "pointer" }}>
+          Cómo funciona
+        </a>
+        <a href="#testimonials" onClick={(e) => { e.preventDefault(); smoothScroll("testimonials"); }} style={{ color: "inherit", textDecoration: "none", cursor: "pointer" }}>
           Familias
-        </a>
-        <a href="#precios" style={{ color: "inherit", textDecoration: "none" }}>
-          Precios
         </a>
       </div>
       <div style={{ display: "flex", gap: 8 }}>
         <Button variant="ghost" size="sm" onClick={onSignIn}>
-          Iniciar sesion
+          Iniciar sesión
         </Button>
         <Button size="sm" onClick={onSignUp}>
           Empezar
@@ -123,7 +129,7 @@ const FeatureCard = ({ icon, title, desc, accent, delay }) => (
 );
 
 const Features = () => (
-  <section style={{ padding: "120px 32px", position: "relative" }}>
+  <section id="features" style={{ padding: "120px 32px", position: "relative" }}>
     <div style={{ maxWidth: 1160, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 64 }}>
         <SectionLabel>Caracteristicas</SectionLabel>
@@ -324,7 +330,7 @@ const HowItWorks = () => {
     }
   ];
   return (
-    <section id="como-funciona" style={{ padding: "120px 32px", position: "relative" }}>
+    <section id="how-it-works" style={{ padding: "120px 32px", position: "relative" }}>
       <div style={{ maxWidth: 1160, margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: 72 }}>
           <SectionLabel>Como funciona</SectionLabel>
@@ -419,7 +425,7 @@ const Testimonials = () => {
     }
   ];
   return (
-    <section id="familias" style={{ padding: "120px 32px", position: "relative" }}>
+    <section id="testimonials" style={{ padding: "120px 32px", position: "relative" }}>
       <div style={{ maxWidth: 1160, margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: 60 }}>
           <SectionLabel>Familias</SectionLabel>
@@ -487,7 +493,7 @@ const Testimonials = () => {
 };
 
 const FinalCTA = ({ onSignUp, onTalk }) => (
-  <section id="precios" style={{ padding: "100px 32px 140px", position: "relative" }}>
+  <section id="pricing" style={{ padding: "100px 32px 140px", position: "relative" }}>
     <div
       style={{
         maxWidth: 960,
@@ -579,8 +585,7 @@ const Footer = () => (
 
 const LandingPage = ({ onSignUp, onSignIn, onTalk }) => {
   const handleSecondary = () => {
-    if (typeof window === "undefined") return;
-    document.getElementById("como-funciona")?.scrollIntoView({ behavior: "smooth" });
+    smoothScroll("features");
   };
 
   return (
