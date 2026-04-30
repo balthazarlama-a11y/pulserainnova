@@ -1,4 +1,4 @@
-yyimport React from "react";
+import React from "react";
 import Bracelet from "@/components/marketing/bracelet";
 import HeroGeometric from "@/components/marketing/hero";
 import {
