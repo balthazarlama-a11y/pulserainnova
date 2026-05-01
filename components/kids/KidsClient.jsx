@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { stressState, AmbientOrbs } from "@/components/marketing/primitives";
 import { IconWind, IconGamepad, IconMusic, IconBook, IconArrowLeft, IconX, IconArrowRight } from "@/components/marketing/icons";
 import { CHILD_PROFILE, getCurrentStress, getStressKey } from "@/lib/mockData";
+import { useSimulation } from "@/lib/simulationContext";
 
 // Friendly blob character — reacts to stress/mood
 const CalmChar = ({ mood = "calm", size = 220 }) => {
@@ -297,10 +298,14 @@ const ActivityCard = ({ accent, icon, title, sub, recommended, onClick }) => (
 // Main Kids View
 export default function KidsClient() {
   const router = useRouter();
-  const [stress, setStress] = useState(35);
+  const sim = useSimulation();
+  const [baseStress, setBaseStress] = useState(35);
   const [activity, setActivity] = useState(null);
 
-  useEffect(() => { setStress(getCurrentStress()); }, []);
+  useEffect(() => { setBaseStress(getCurrentStress()); }, []);
+
+  const simData = sim.active ? sim.getCurrentSimData() : null;
+  const stress = sim.active ? simData.stress : baseStress;
 
   const state = stressState(stress);
   const mood = state.key;
@@ -338,6 +343,20 @@ export default function KidsClient() {
           <span style={{ fontSize: 13 }}>{CHILD_PROFILE.name} · {CHILD_PROFILE.age} años</span>
         </div>
       </header>
+
+      {sim.active && (
+        <div style={{
+          position: "relative", zIndex: 2, margin: "0 32px 8px",
+          padding: "8px 16px", borderRadius: 10,
+          background: "rgba(184,164,255,0.1)", border: "1px solid rgba(184,164,255,0.25)",
+          display: "flex", alignItems: "center", gap: 8,
+          fontSize: 13, color: "#D4C5FF",
+        }}>
+          <span style={{ width: 6, height: 6, borderRadius: 3, background: "#B8A4FF", boxShadow: "0 0 8px #B8A4FF", animation: "simPulseSmall 1.5s ease-in-out infinite" }} />
+          Modo simulación · {sim.getTimeLabel()}
+          <style>{`@keyframes simPulseSmall { 0%,100% { opacity:1; } 50% { opacity:0.4; } }`}</style>
+        </div>
+      )}
 
       <main style={{ position: "relative", zIndex: 2, maxWidth: 960, margin: "0 auto", padding: "20px 32px 80px", textAlign: "center" }}>
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>

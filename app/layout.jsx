@@ -1,5 +1,6 @@
 import "./globals.css";
 import { AuthProvider } from "@/components/auth/AuthProvider";
+import ClientProviders from "@/components/providers/ClientProviders";
 
 export const metadata = {
   title: "CalmBand",
@@ -10,7 +11,9 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className="min-h-screen bg-[var(--bg-2)] text-[var(--ink)]">
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <ClientProviders>{children}</ClientProviders>
+        </AuthProvider>
       </body>
     </html>
   );

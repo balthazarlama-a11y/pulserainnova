@@ -16,6 +16,7 @@ import {
   generate24hHistory, getWeeklyData, TODAY_ACTIVITY, RECOMMENDATIONS,
   getStressKey
 } from "@/lib/mockData";
+import { useSimulation } from "@/lib/simulationContext";
 
 // Stress ring visualization
 const StressRing = ({ value, size = 260 }) => {
@@ -52,7 +53,10 @@ const StressRing = ({ value, size = 260 }) => {
 const StressChart = ({ stress, hourlyData }) => {
   const w = 640, h = 180;
   const points = useMemo(() => {
-    if (hourlyData && hourlyData.length === 24) return hourlyData.map(hd => hd.avgStress || hd.stressLevel);
+    if (hourlyData && hourlyData.length === 24) return hourlyData.map(hd => {
+      const val = hd.avgStress ?? hd.stressLevel ?? hd.stress;
+      return val != null ? val : 0;
+    });
     const arr = [];
     for (let i = 0; i < 24; i++) {
       const wobble = Math.sin(i * 0.6 + stress * 0.05) * 10 + Math.sin(i * 1.3) * 5;
@@ -95,8 +99,9 @@ const StressChart = ({ stress, hourlyData }) => {
 };
 
 // Weekly bars
-const WeekBars = ({ stress }) => {
-  const weekly = useMemo(() => getWeeklyData(), []);
+const WeekBars = ({ stress, weeklyOverride }) => {
+  const defaultWeekly = useMemo(() => getWeeklyData(), []);
+  const weekly = weeklyOverride || defaultWeekly;
   return (
     <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 120 }}>
       {weekly.map((d, i) => {
@@ -220,19 +225,28 @@ const HubCard = ({ href, icon, title, desc, accent }) => (
 export default function DashboardClient({ user, profile }) {
   const router = useRouter();
   const { supabase } = useAuth();
-  const [stress, setStress] = useState(35);
-  const [hourlyData, setHourlyData] = useState(null);
+  const sim = useSimulation();
+  const [baseStress, setBaseStress] = useState(35);
+  const [baseHourlyData, setBaseHourlyData] = useState(null);
 
   useEffect(() => {
-    setStress(getCurrentStress());
-    setHourlyData(generate24hHistory());
+    setBaseStress(getCurrentStress());
+    setBaseHourlyData(generate24hHistory());
   }, []);
+
+  // Use simulation data when active
+  const simData = sim.active ? sim.getCurrentSimData() : null;
+  const stress = sim.active ? simData.stress : baseStress;
+  const simHourly = sim.active ? sim.getProgressiveHourlyData() : null;
+  const hourlyData = simHourly ? simHourly.map(h => ({ ...h, avgStress: h.stress, stressLevel: h.stress })) : baseHourlyData;
+  const simWeekly = sim.active ? sim.getSimWeeklyData() : null;
+  const simEvents = sim.active ? sim.getVisibleEvents() : null;
 
   const state = stressState(stress);
   const now = new Date();
   const greeting = now.getHours() < 12 ? "Buenos días" : now.getHours() < 19 ? "Buenas tardes" : "Buenas noches";
   const parentName = profile?.display_name || PARENT_PROFILE.name;
-  const avgBpm = 72 + Math.floor(stress / 5);
+  const avgBpm = sim.active ? (simData?.bpm || 72) : 72 + Math.floor(stress / 5);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -286,7 +300,7 @@ export default function DashboardClient({ user, profile }) {
             </h1>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <Pill dot={state.hex}>Pulsera conectada</Pill>
+            <Pill dot={state.hex}>{sim.active ? `Simulando · ${sim.getTimeLabel()}` : "Pulsera conectada"}</Pill>
             <Link href="/kids" style={{
               display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 14px",
               background: "rgba(184,164,255,0.12)", color: "#D4C5FF",
@@ -337,9 +351,9 @@ export default function DashboardClient({ user, profile }) {
           <StressChart stress={stress} hourlyData={hourlyData}/>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginTop: 24 }}>
             <Stat label="Promedio hoy" value={`${Math.round(100 - stress * 0.95)}`} sub="nivel de calma" accent={state.hex}/>
-            <Stat label="Ejercicios" value="4" sub="completados"/>
+            <Stat label="Ejercicios" value={sim.active ? sim.weekData[sim.currentDay]?.summary.exercisesCount : "4"} sub="completados"/>
             <Stat label="Ritmo cardíaco" value={`${avgBpm}`} sub="lpm promedio"/>
-            <Stat label="Sueño" value="8h 20m" sub="anoche"/>
+            <Stat label="Sueño" value={sim.active ? sim.weekData[sim.currentDay]?.summary.sleepHours : "8h 20m"} sub="anoche"/>
           </div>
         </Card>
 
@@ -353,7 +367,7 @@ export default function DashboardClient({ user, profile }) {
               </div>
               <Pill>{state.label}</Pill>
             </div>
-            <WeekBars stress={stress}/>
+            <WeekBars stress={stress} weeklyOverride={simWeekly}/>
             <div style={{ marginTop: 18, padding: 14, borderRadius: 10, background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)", fontSize: 13, color: "var(--ink-dim)", lineHeight: 1.5 }}>
               <strong style={{ color: "var(--ink)" }}>Observación:</strong> los miércoles muestran picos más altos, coinciden con clases de matemáticas.
             </div>
@@ -363,13 +377,14 @@ export default function DashboardClient({ user, profile }) {
             <div style={{ fontSize: 12, letterSpacing: 1.4, textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 4 }}>Actividad</div>
             <h3 style={{ margin: "0 0 18px", fontFamily: "Fraunces, serif", fontSize: 22, fontWeight: 500, letterSpacing: -0.3 }}>Hoy</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {TODAY_ACTIVITY.map((x, i) => {
+              {(simEvents || TODAY_ACTIVITY).map((x, i) => {
                 const iconMap = {
                   sun: <IconSun size={14}/>, activity: <IconActivity size={14}/>,
-                  wind: <IconWind size={14}/>, heart: <IconHeart size={14}/>, gamepad: <IconGamepad size={14}/>
+                  wind: <IconWind size={14}/>, heart: <IconHeart size={14}/>, gamepad: <IconGamepad size={14}/>,
+                  book: <IconBook size={14}/>, music: <IconMusic size={14}/>
                 };
                 return (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, animation: sim.active ? "heroTextIn 0.4s" : "none" }}>
                     <div style={{ fontSize: 12, color: "var(--ink-faint)", fontVariantNumeric: "tabular-nums", width: 44 }}>{x.time}</div>
                     <div style={{
                       width: 28, height: 28, borderRadius: 8,
@@ -380,6 +395,9 @@ export default function DashboardClient({ user, profile }) {
                   </div>
                 );
               })}
+              {sim.active && simEvents && simEvents.length === 0 && (
+                <div style={{ fontSize: 13, color: "var(--ink-faint)", fontStyle: "italic" }}>Esperando eventos...</div>
+              )}
             </div>
           </Card>
         </div>
