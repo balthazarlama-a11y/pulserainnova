@@ -5,12 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { stressState, GradientText, AmbientOrbs, Card, Pill } from "@/components/marketing/primitives";
 import {
-  IconHome, IconChart, IconBell, IconSettings, IconLogOut, IconArrowRight,
+  IconHome, IconChart, IconSettings, IconLogOut, IconArrowRight,
   IconSparkles, IconWind, IconGamepad, IconMusic, IconBook, IconHeart,
-  IconChevronRight, IconActivity, IconSun, IconWatch, IconShield
+  IconChevronRight, IconActivity, IconSun, IconWatch,
+  IconCalendar, IconWifi, IconWifiOff, IconRefresh, IconX, IconAlertTriangle,
 } from "@/components/marketing/icons";
 import { useAuth } from "@/hooks/useAuth";
-import Bracelet from "@/components/marketing/bracelet";
 import {
   CHILD_PROFILE, PARENT_PROFILE, getCurrentStress,
   generate24hHistory, getWeeklyData, TODAY_ACTIVITY, RECOMMENDATIONS,
@@ -18,7 +18,7 @@ import {
 } from "@/lib/mockData";
 import { useSimulation } from "@/lib/simulationContext";
 
-// Stress ring visualization
+// ─── Anillo de estrés ────────────────────────────────────────────────────────
 const StressRing = ({ value, size = 260 }) => {
   const state = stressState(value);
   const r = size / 2 - 22;
@@ -49,7 +49,7 @@ const StressRing = ({ value, size = 260 }) => {
   );
 };
 
-// 24h chart
+// ─── Gráfico 24h ─────────────────────────────────────────────────────────────
 const StressChart = ({ stress, hourlyData }) => {
   const w = 640, h = 180;
   const points = useMemo(() => {
@@ -98,7 +98,7 @@ const StressChart = ({ stress, hourlyData }) => {
   );
 };
 
-// Weekly bars
+// ─── Barras semanales ─────────────────────────────────────────────────────────
 const WeekBars = ({ stress, weeklyOverride }) => {
   const defaultWeekly = useMemo(() => getWeeklyData(), []);
   const weekly = weeklyOverride || defaultWeekly;
@@ -123,16 +123,120 @@ const WeekBars = ({ stress, weeklyOverride }) => {
   );
 };
 
-// AI Recommendation panel
+// ─── Modal de recomendación ───────────────────────────────────────────────────
+const RecModal = ({ rec, state, onClose }) => {
+  if (!rec) return null;
+  return (
+    <>
+      <div
+        onClick={onClose}
+        style={{
+          position: "fixed", inset: 0, zIndex: 10001,
+          background: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)",
+          animation: "simFadeIn 0.2s ease-out",
+        }}
+      />
+      <div style={{
+        position: "fixed", top: "50%", left: "50%", zIndex: 10002,
+        transform: "translate(-50%,-50%)",
+        width: "min(480px, calc(100vw - 40px))",
+        background: "rgba(13,10,36,0.98)",
+        border: `1px solid ${state.hex}40`,
+        borderRadius: 20,
+        padding: 28,
+        boxShadow: `0 24px 80px -12px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.05)`,
+        animation: "recModalIn 0.25s cubic-bezier(.2,1.2,.4,1)",
+      }}>
+        {/* Cabecera del modal */}
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{
+              width: 48, height: 48, borderRadius: 14, flexShrink: 0,
+              background: `linear-gradient(135deg, ${state.hex}33, ${state.hex}10)`,
+              border: `1px solid ${state.hex}40`, color: state.hex,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              {{
+                wind: <IconWind size={20}/>, gamepad: <IconGamepad size={20}/>,
+                music: <IconMusic size={20}/>, book: <IconBook size={20}/>,
+                heart: <IconHeart size={20}/>
+              }[rec.icon] || <IconSparkles size={20}/>}
+            </div>
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 2 }}>{rec.title}</div>
+              <div style={{
+                display: "inline-flex", alignItems: "center", gap: 5,
+                fontSize: 11, color: state.hex,
+                background: `${state.hex}15`, borderRadius: 99, padding: "2px 10px",
+              }}>{rec.duration}</div>
+            </div>
+          </div>
+          <button onClick={onClose} style={{
+            width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+            background: "rgba(255,255,255,0.06)", border: "1px solid var(--border)",
+            color: "var(--ink-dim)", cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}><IconX size={14}/></button>
+        </div>
+
+        {/* Descripción corta */}
+        <div style={{
+          padding: "12px 14px", borderRadius: 10, marginBottom: 16,
+          background: `${state.hex}0D`, border: `1px solid ${state.hex}25`,
+          fontSize: 14, color: "var(--ink-muted)", lineHeight: 1.5,
+        }}>{rec.detail}</div>
+
+        {/* Explicación profunda */}
+        <div style={{ fontSize: 13, color: "var(--ink-dim)", lineHeight: 1.7 }}>
+          {rec.deepExplanation}
+        </div>
+
+        <button
+          onClick={onClose}
+          style={{
+            marginTop: 22, width: "100%", padding: "12px",
+            borderRadius: 12, border: "none", cursor: "pointer",
+            background: `linear-gradient(135deg, ${state.hex}, ${state.hex}bb)`,
+            color: "#0D0824", fontWeight: 600, fontSize: 14,
+            fontFamily: "Inter, sans-serif",
+          }}
+        >
+          Entendido
+        </button>
+      </div>
+      <style>{`
+        @keyframes recModalIn {
+          from { opacity:0; transform:translate(-50%,-48%) scale(0.95); }
+          to   { opacity:1; transform:translate(-50%,-50%) scale(1); }
+        }
+        @keyframes simFadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+      `}</style>
+    </>
+  );
+};
+
+// ─── Panel de recomendaciones IA ──────────────────────────────────────────────
 const RecommendationPanel = ({ stress }) => {
   const [recs, setRecs] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [selectedRec, setSelectedRec] = useState(null);
   const state = stressState(stress);
   const stressKey = getStressKey(stress);
 
+  // Etiqueta contextual según la fase del episodio
+  const phaseLabel = {
+    calm:     { text: "Estado tranquilo",   color: "#A8E6CF" },
+    mild:     { text: "Pre-episodio · Prevención",  color: "#F5D06F" },
+    moderate: { text: "Estrés moderado · Intervenir", color: "#FFB4A2" },
+    high:     { text: "Durante el episodio · Crisis", color: "#EC5B6B" },
+  }[stressKey];
+
   const fetchRecs = useCallback(async () => {
     setLoading(true);
-    await new Promise(r => setTimeout(r, 350));
+    await new Promise(r => setTimeout(r, 380));
     setRecs(RECOMMENDATIONS[stressKey] || RECOMMENDATIONS.mild);
     setLoading(false);
   }, [stressKey]);
@@ -146,67 +250,123 @@ const RecommendationPanel = ({ stress }) => {
   };
 
   return (
-    <Card style={{ padding: 26, height: "100%" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
-        <div>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, letterSpacing: 1.4, textTransform: "uppercase", color: "rgba(184,164,255,0.9)", marginBottom: 6 }}>
-            <IconSparkles size={12}/> Recomendación IA
-          </div>
-          <h3 style={{ margin: 0, fontFamily: "Fraunces, serif", fontSize: 22, fontWeight: 500, letterSpacing: -0.3 }}>Para este momento</h3>
-        </div>
-        <button onClick={fetchRecs} disabled={loading} style={{
-          background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)",
-          borderRadius: 8, padding: "6px 10px", color: "var(--ink-muted)", cursor: "pointer", fontSize: 12,
-          display: "inline-flex", alignItems: "center", gap: 6
-        }}>
-          {loading ? <span style={{ width: 10, height: 10, border: "1.5px solid rgba(255,255,255,0.2)", borderTopColor: "#B8A4FF", borderRadius: 5, animation: "spin-slow 0.8s linear infinite", display: "inline-block" }}/> : <IconSparkles size={12}/>}
-          {loading ? "Pensando" : "Actualizar"}
-        </button>
-      </div>
-
-      {loading && !recs ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {[0,1,2].map(i => (
-            <div key={i} style={{ height: 72, borderRadius: 12, background: "linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.08), rgba(255,255,255,0.03))", backgroundSize: "200% 100%", animation: "sheen 1.8s linear infinite" }}/>
-          ))}
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {(recs || []).map((r, i) => (
-            <div key={i} style={{
-              padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.025)",
-              border: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 14, cursor: "pointer", transition: "all 0.2s"
-            }}>
-              <div style={{
-                width: 38, height: 38, borderRadius: 10,
-                background: `linear-gradient(135deg, ${state.hex}33, ${state.hex}10)`,
-                border: `1px solid ${state.hex}40`, color: state.hex,
-                display: "flex", alignItems: "center", justifyContent: "center"
-              }}>{iconMap[r.icon] || <IconSparkles size={18}/>}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>{r.title}</div>
-                <div style={{ fontSize: 12, color: "var(--ink-dim)", lineHeight: 1.4 }}>{r.detail}</div>
-              </div>
-              <div style={{ fontSize: 11, color: "var(--ink-faint)", fontVariantNumeric: "tabular-nums" }}>{r.duration}</div>
-              <IconChevronRight size={14} style={{ color: "var(--ink-faint)" }}/>
+    <>
+      <Card style={{ padding: 26, height: "100%" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+          <div>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, letterSpacing: 1.4, textTransform: "uppercase", color: "rgba(184,164,255,0.9)", marginBottom: 6 }}>
+              <IconSparkles size={12}/> Recomendación IA
             </div>
-          ))}
+            <h3 style={{ margin: "0 0 6px", fontFamily: "Fraunces, serif", fontSize: 22, fontWeight: 500, letterSpacing: -0.3 }}>Para este momento</h3>
+            {/* Etiqueta de fase */}
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              fontSize: 11, fontWeight: 600, letterSpacing: 0.4,
+              color: phaseLabel.color,
+              background: `${phaseLabel.color}18`,
+              border: `1px solid ${phaseLabel.color}35`,
+              borderRadius: 99, padding: "3px 10px",
+            }}>
+              <span style={{ width: 5, height: 5, borderRadius: "50%", background: phaseLabel.color }}/>
+              {phaseLabel.text}
+            </div>
+          </div>
+          {/* Botón actualizar */}
+          <button onClick={fetchRecs} disabled={loading} style={{
+            background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)",
+            borderRadius: 8, padding: "6px 10px", color: "var(--ink-muted)", cursor: "pointer", fontSize: 12,
+            display: "inline-flex", alignItems: "center", gap: 6,
+            opacity: loading ? 0.7 : 1, transition: "opacity 0.2s",
+          }}>
+            {loading
+              ? <span style={{ width: 10, height: 10, border: "1.5px solid rgba(255,255,255,0.2)", borderTopColor: "#B8A4FF", borderRadius: 5, animation: "spin-slow 0.8s linear infinite", display: "inline-block" }}/>
+              : <IconRefresh size={12}/>
+            }
+            {loading ? "Actualizando" : "Actualizar"}
+          </button>
         </div>
-      )}
-    </Card>
+
+        {loading && !recs ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {[0,1,2].map(i => (
+              <div key={i} style={{ height: 72, borderRadius: 12, background: "linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.08), rgba(255,255,255,0.03))", backgroundSize: "200% 100%", animation: "sheen 1.8s linear infinite" }}/>
+            ))}
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {(recs || []).map((r, i) => (
+              <div
+                key={i}
+                onClick={() => setSelectedRec(r)}
+                style={{
+                  padding: 14, borderRadius: 12,
+                  background: "rgba(255,255,255,0.025)",
+                  border: "1px solid var(--border)",
+                  display: "flex", alignItems: "center", gap: 14,
+                  cursor: "pointer", transition: "all 0.2s",
+                  // Hover se maneja con CSS inline no disponible; el cursor pointer indica interactividad
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = `${state.hex}10`;
+                  e.currentTarget.style.borderColor = `${state.hex}40`;
+                  e.currentTarget.style.transform = "translateY(-1px)";
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = "rgba(255,255,255,0.025)";
+                  e.currentTarget.style.borderColor = "var(--border)";
+                  e.currentTarget.style.transform = "translateY(0)";
+                }}
+              >
+                <div style={{
+                  width: 38, height: 38, borderRadius: 10, flexShrink: 0,
+                  background: `linear-gradient(135deg, ${state.hex}33, ${state.hex}10)`,
+                  border: `1px solid ${state.hex}40`, color: state.hex,
+                  display: "flex", alignItems: "center", justifyContent: "center"
+                }}>{iconMap[r.icon] || <IconSparkles size={18}/>}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>{r.title}</div>
+                  <div style={{ fontSize: 12, color: "var(--ink-dim)", lineHeight: 1.4 }}>{r.detail}</div>
+                </div>
+                <div style={{ fontSize: 11, color: "var(--ink-faint)", fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{r.duration}</div>
+                <IconChevronRight size={14} style={{ color: "var(--ink-faint)", flexShrink: 0 }}/>
+              </div>
+            ))}
+            <div style={{ fontSize: 11, color: "var(--ink-faint)", textAlign: "center", marginTop: 4 }}>
+              Toca una tarjeta para ver la explicación completa
+            </div>
+          </div>
+        )}
+      </Card>
+
+      <RecModal rec={selectedRec} state={state} onClose={() => setSelectedRec(null)}/>
+    </>
   );
 };
 
-// Stat card
-const Stat = ({ label, value, sub, accent }) => (
+// ─── Tarjeta de estadística ───────────────────────────────────────────────────
+const Stat = ({ label, value, sub, accent, action, onAction }) => (
   <div style={{ padding: 18, borderRadius: 14, background: "rgba(255,255,255,0.025)", border: "1px solid var(--border)" }}>
     <div style={{ fontSize: 11, letterSpacing: 1.4, textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 8 }}>{label}</div>
     <div style={{ fontSize: 28, fontWeight: 600, letterSpacing: -1, color: accent || "var(--ink)" }}>{value}</div>
     <div style={{ fontSize: 12, color: "var(--ink-faint)", marginTop: 2 }}>{sub}</div>
+    {action && (
+      <button
+        onClick={onAction}
+        style={{
+          marginTop: 8, fontSize: 11, color: accent || "#B8A4FF",
+          background: "transparent", border: `1px solid ${accent || "#B8A4FF"}40`,
+          borderRadius: 6, padding: "3px 8px", cursor: "pointer",
+          display: "inline-flex", alignItems: "center", gap: 4,
+          fontFamily: "Inter, sans-serif",
+        }}
+      >
+        <IconRefresh size={10}/> {action}
+      </button>
+    )}
   </div>
 );
 
-// Navigation hub card
+// ─── Tarjeta del hub de navegación ───────────────────────────────────────────
 const HubCard = ({ href, icon, title, desc, accent }) => (
   <Link href={href} style={{ textDecoration: "none", color: "inherit" }}>
     <Card hover style={{ padding: 22, height: "100%", cursor: "pointer" }}>
@@ -222,23 +382,29 @@ const HubCard = ({ href, icon, title, desc, accent }) => (
   </Link>
 );
 
+// ─── Componente principal ─────────────────────────────────────────────────────
 export default function DashboardClient({ user, profile }) {
   const router = useRouter();
   const { supabase } = useAuth();
   const sim = useSimulation();
   const [baseStress, setBaseStress] = useState(35);
   const [baseHourlyData, setBaseHourlyData] = useState(null);
+  const [baseBpm, setBaseBpm] = useState(72);
+  // WiFi status simulado: en producción vendría de la pulsera
+  const [wifiStatus] = useState("online"); // "online" | "offline"
 
   useEffect(() => {
     setBaseStress(getCurrentStress());
     setBaseHourlyData(generate24hHistory());
   }, []);
 
-  // Use simulation data when active
+  // Usar datos de simulación cuando está activo
   const simData = sim.active ? sim.getCurrentSimData() : null;
   const stress = sim.active ? simData.stress : baseStress;
   const simHourly = sim.active ? sim.getProgressiveHourlyData() : null;
-  const hourlyData = simHourly ? simHourly.map(h => ({ ...h, avgStress: h.stress, stressLevel: h.stress })) : baseHourlyData;
+  const hourlyData = simHourly
+    ? simHourly.map(h => ({ ...h, avgStress: h.stress, stressLevel: h.stress }))
+    : baseHourlyData;
   const simWeekly = sim.active ? sim.getSimWeeklyData() : null;
   const simEvents = sim.active ? sim.getVisibleEvents() : null;
 
@@ -246,7 +412,7 @@ export default function DashboardClient({ user, profile }) {
   const now = new Date();
   const greeting = now.getHours() < 12 ? "Buenos días" : now.getHours() < 19 ? "Buenas tardes" : "Buenas noches";
   const parentName = profile?.display_name || PARENT_PROFILE.name;
-  const avgBpm = sim.active ? (simData?.bpm || 72) : 72 + Math.floor(stress / 5);
+  const avgBpm = sim.active ? (simData?.bpm || 72) : baseBpm + Math.floor(stress / 5);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -254,11 +420,17 @@ export default function DashboardClient({ user, profile }) {
     router.refresh();
   };
 
+  // Simula un reseteo del ritmo cardíaco basal (ej. después de hacer deporte)
+  const handleResetBaseBpm = () => {
+    const newBase = Math.round(65 + Math.random() * 12); // 65–77 lpm
+    setBaseBpm(newBase);
+  };
+
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg-2)", color: "var(--ink)", position: "relative" }}>
       <AmbientOrbs/>
 
-      {/* Sidebar */}
+      {/* Barra lateral */}
       <aside className="dashboard-sidebar" style={{
         position: "fixed", left: 0, top: 0, bottom: 0, width: 76, zIndex: 5,
         borderRight: "1px solid var(--border)", background: "rgba(10,10,26,0.7)",
@@ -267,10 +439,11 @@ export default function DashboardClient({ user, profile }) {
         <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, #B8A4FF, #A8E6CF)", marginBottom: 32 }}/>
         <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
           {[
-            { i: <IconHome size={18}/>, active: true, label: "Inicio", href: "/dashboard" },
-            { i: <IconChart size={18}/>, label: "Historial", href: "/history" },
-            { i: <IconWatch size={18}/>, label: "Pulsera", href: "/pairing" },
-            { i: <IconSettings size={18}/>, label: "Ajustes", href: "/dashboard" },
+            { i: <IconHome size={18}/>,     active: true,  label: "Inicio",    href: "/dashboard" },
+            { i: <IconChart size={18}/>,    active: false, label: "Historial", href: "/history" },
+            { i: <IconWatch size={18}/>,    active: false, label: "Conexión",  href: "/pairing" },
+            { i: <IconCalendar size={18}/>, active: false, label: "Horario",   href: "/schedule" },
+            { i: <IconSettings size={18}/>, active: false, label: "Ajustes",   href: "/settings" },
           ].map((x, k) => (
             <Link key={k} href={x.href} title={x.label} style={{
               width: 44, height: 44, borderRadius: 12,
@@ -289,9 +462,10 @@ export default function DashboardClient({ user, profile }) {
         }}><IconLogOut size={18}/></button>
       </aside>
 
-      {/* Main */}
+      {/* Contenido principal */}
       <main className="dashboard-main" style={{ marginLeft: 76, padding: "32px 40px 80px", position: "relative", zIndex: 2, maxWidth: 1440 }}>
-        {/* Top bar */}
+
+        {/* Barra superior */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 36, flexWrap: "wrap", gap: 12 }}>
           <div>
             <div style={{ fontSize: 13, color: "var(--ink-dim)", marginBottom: 4 }}>{greeting}, {parentName}</div>
@@ -299,8 +473,23 @@ export default function DashboardClient({ user, profile }) {
               Así está <GradientText>{CHILD_PROFILE.name}</GradientText> hoy
             </h1>
           </div>
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <Pill dot={state.hex}>{sim.active ? `Simulando · ${sim.getTimeLabel()}` : "Pulsera conectada"}</Pill>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            {/* Indicador de pulsera */}
+            <Pill dot={state.hex}>
+              {sim.active ? `Simulando · ${sim.getTimeLabel()}` : "Pulsera conectada"}
+            </Pill>
+            {/* Badge WiFi */}
+            <span style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              fontSize: 12, fontWeight: 600, padding: "5px 12px",
+              borderRadius: 99,
+              background: wifiStatus === "online" ? "rgba(94,220,154,0.12)" : "rgba(236,91,107,0.12)",
+              border: `1px solid ${wifiStatus === "online" ? "rgba(94,220,154,0.35)" : "rgba(236,91,107,0.35)"}`,
+              color: wifiStatus === "online" ? "#5EDC9A" : "#EC5B6B",
+            }}>
+              {wifiStatus === "online" ? <IconWifi size={12}/> : <IconWifiOff size={12}/>}
+              {wifiStatus === "online" ? "WiFi conectada" : "Sin conexión"}
+            </span>
             <Link href="/kids" style={{
               display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 14px",
               background: "rgba(184,164,255,0.12)", color: "#D4C5FF",
@@ -318,7 +507,7 @@ export default function DashboardClient({ user, profile }) {
           </div>
         </div>
 
-        {/* Row 1: ring + bracelet + recommendations */}
+        {/* Fila 1: anillo + recomendaciones */}
         <div className="dashboard-row" style={{ display: "grid", gridTemplateColumns: "380px 1fr", gap: 24, marginBottom: 24 }}>
           <Card style={{ padding: 28, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20 }}>
             <StressRing value={stress} size={260}/>
@@ -328,19 +517,20 @@ export default function DashboardClient({ user, profile }) {
               color: state.hex, fontSize: 13, fontWeight: 500, transition: "all 0.3s"
             }}>
               <span style={{ width: 8, height: 8, borderRadius: 4, background: state.hex, boxShadow: `0 0 8px ${state.hex}` }}/>
-              {state.key === "calm" && "Tranquila · puede concentrarse"}
-              {state.key === "mild" && "Un poco inquieta · observar"}
-              {state.key === "moderate" && "Estresada · necesita apoyo"}
-              {state.key === "high" && "Muy ansiosa · intervenir ya"}
+              {state.key === "calm"     && "Tranquilo · puede concentrarse"}
+              {state.key === "mild"     && "Un poco inquieto · observar"}
+              {state.key === "moderate" && "Estresado · necesita apoyo"}
+              {state.key === "high"     && "Muy ansioso · intervenir ya"}
             </div>
             <div style={{ fontSize: 12, color: "var(--ink-faint)", textAlign: "center", maxWidth: 280, lineHeight: 1.5 }}>
-              Basado en HRV, ritmo y temperatura de los últimos 10 minutos.
+              Basado en HRV y ritmo cardíaco de los últimos 10 minutos.
+              La pulsera se prende una luz cuando detecta un nivel de estrés elevado.
             </div>
           </Card>
           <RecommendationPanel stress={stress}/>
         </div>
 
-        {/* Row 2: chart */}
+        {/* Fila 2: gráfico 24h */}
         <Card style={{ padding: 28, marginBottom: 24 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
             <div>
@@ -349,15 +539,21 @@ export default function DashboardClient({ user, profile }) {
             </div>
           </div>
           <StressChart stress={stress} hourlyData={hourlyData}/>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginTop: 24 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginTop: 24 }}>
             <Stat label="Promedio hoy" value={`${Math.round(100 - stress * 0.95)}`} sub="nivel de calma" accent={state.hex}/>
-            <Stat label="Ejercicios" value={sim.active ? sim.weekData[sim.currentDay]?.summary.exercisesCount : "4"} sub="completados"/>
-            <Stat label="Ritmo cardíaco" value={`${avgBpm}`} sub="lpm promedio"/>
+            <Stat
+              label="Ritmo cardíaco"
+              value={`${avgBpm}`}
+              sub="lpm promedio"
+              accent="#EC5B6B"
+              action="Actualizar pulsos base"
+              onAction={handleResetBaseBpm}
+            />
             <Stat label="Sueño" value={sim.active ? sim.weekData[sim.currentDay]?.summary.sleepHours : "8h 20m"} sub="anoche"/>
           </div>
         </Card>
 
-        {/* Row 3: week + activity */}
+        {/* Fila 3: semana + actividad */}
         <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 24, marginBottom: 24 }}>
           <Card style={{ padding: 28 }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
@@ -369,7 +565,7 @@ export default function DashboardClient({ user, profile }) {
             </div>
             <WeekBars stress={stress} weeklyOverride={simWeekly}/>
             <div style={{ marginTop: 18, padding: 14, borderRadius: 10, background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)", fontSize: 13, color: "var(--ink-dim)", lineHeight: 1.5 }}>
-              <strong style={{ color: "var(--ink)" }}>Observación:</strong> los miércoles muestran picos más altos, coinciden con clases de matemáticas.
+              <strong style={{ color: "var(--ink)" }}>Observación:</strong> los martes muestran picos más altos, coinciden con clases de matemáticas.
             </div>
           </Card>
 
@@ -402,11 +598,12 @@ export default function DashboardClient({ user, profile }) {
           </Card>
         </div>
 
-        {/* Row 4: Navigation hub */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
-          <HubCard href="/kids" icon={<IconHeart size={22}/>} title={`Vista de ${CHILD_PROFILE.name}`} desc="Personaje animado, ejercicios de respiración y mini-juegos." accent="#B8A4FF"/>
-          <HubCard href="/pairing" icon={<IconWatch size={22}/>} title="Emparejar pulsera" desc="Conecta o vincula un nuevo dispositivo CalmBand." accent="#A8E6CF"/>
-          <HubCard href="/history" icon={<IconChart size={22}/>} title="Historial" desc="Sesiones pasadas, tendencias y ejercicios completados." accent="#FFB4A2"/>
+        {/* Fila 4: Hub de navegación */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
+          <HubCard href="/kids"     icon={<IconHeart size={22}/>}    title={`Vista de ${CHILD_PROFILE.name}`} desc="Personaje animado, ejercicios de respiración y minijuegos." accent="#B8A4FF"/>
+          <HubCard href="/pairing"  icon={<IconWatch size={22}/>}    title="Conexión"  desc="Busca y vincula un dispositivo CalmBand." accent="#A8E6CF"/>
+          <HubCard href="/schedule" icon={<IconCalendar size={22}/>} title="Horario"   desc="Calendario diario de Simón con actividades del colegio." accent="#F5D06F"/>
+          <HubCard href="/history"  icon={<IconChart size={22}/>}    title="Historial" desc="Sesiones pasadas, tendencias y ejercicios completados." accent="#FFB4A2"/>
         </div>
       </main>
 

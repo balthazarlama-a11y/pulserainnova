@@ -1,45 +1,62 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { GradientText, AmbientOrbs } from "@/components/marketing/primitives";
-import { IconArrowLeft, IconWatch, IconCheck } from "@/components/marketing/icons";
+import { GradientText, AmbientOrbs, Card } from "@/components/marketing/primitives";
+import { IconArrowLeft, IconWatch, IconCheck, IconWifi, IconRefresh } from "@/components/marketing/icons";
 import { CHILD_PROFILE } from "@/lib/mockData";
+
+// Dispositivos de ejemplo que aparecen en el escaneo BLE
+const MOCK_DEVICES = [
+  { id: "CB-A3F2", name: "CalmBand Pro", rssi: -48, battery: 87 },
+  { id: "CB-9D1E", name: "CalmBand Mini", rssi: -61, battery: 62 },
+];
 
 export default function PairingClient() {
   const router = useRouter();
-  const [code, setCode] = useState(["", "", "", "", "", ""]);
-  const [step, setStep] = useState("code"); // code | verifying | success
-  const inputsRef = useRef([]);
+  const [step, setStep] = useState("idle"); // idle | scanning | found | connecting | success
+  const [devices, setDevices] = useState([]);
+  const [selectedDevice, setSelectedDevice] = useState(null);
 
-  const handle = (i, v) => {
-    if (!/^\d?$/.test(v)) return;
-    const next = [...code]; next[i] = v; setCode(next);
-    if (v && i < 5) inputsRef.current[i+1]?.focus();
-    if (next.every(x => x) && next.join("").length === 6) {
-      setStep("verifying");
-      setTimeout(() => {
-        setStep("success");
-        setTimeout(() => router.push("/dashboard"), 1800);
-      }, 1500);
-    }
+  const handleScan = () => {
+    setStep("scanning");
+    setDevices([]);
+    // Simula descubrimiento progresivo de dispositivos
+    setTimeout(() => setDevices([MOCK_DEVICES[0]]), 900);
+    setTimeout(() => {
+      setDevices(MOCK_DEVICES);
+      setStep("found");
+    }, 1800);
   };
 
-  const handleKey = (i, e) => {
-    if (e.key === "Backspace" && !code[i] && i > 0) inputsRef.current[i-1]?.focus();
+  const handleConnect = (device) => {
+    setSelectedDevice(device);
+    setStep("connecting");
+    setTimeout(() => {
+      setStep("success");
+      setTimeout(() => router.push("/dashboard"), 2000);
+    }, 1600);
   };
 
-  const autofill = () => {
-    const demo = ["4","8","2","1","0","5"];
-    setCode(demo);
-    setStep("verifying");
-    setTimeout(() => { setStep("success"); setTimeout(() => router.push("/dashboard"), 1800); }, 1200);
+  const signalBars = (rssi) => {
+    // rssi: -40 (fuerte) a -80 (débil)
+    const strength = Math.max(1, Math.min(4, Math.round((rssi + 80) / 10)));
+    return Array.from({ length: 4 }, (_, i) => (
+      <div
+        key={i}
+        style={{
+          width: 3, borderRadius: 2,
+          height: 4 + i * 3,
+          background: i < strength ? "#A8E6CF" : "rgba(255,255,255,0.15)",
+        }}
+      />
+    ));
   };
 
   return (
     <div style={{
-      minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
-      background: "var(--bg-2)", position: "relative", overflow: "hidden", padding: 32
+      minHeight: "100vh", background: "var(--bg-2)", position: "relative",
+      overflow: "hidden", padding: 32,
     }}>
       <AmbientOrbs/>
 
@@ -52,101 +69,175 @@ export default function PairingClient() {
         <IconArrowLeft size={14}/> Volver
       </button>
 
-      <div style={{ maxWidth: 520, width: "100%", position: "relative", zIndex: 2, textAlign: "center" }}>
-        {step === "success" ? (
-          <div style={{ animation: "heroTextIn 0.5s forwards" }}>
-            <div style={{
-              width: 100, height: 100, borderRadius: 50,
-              background: "linear-gradient(135deg, #5EDC9A, #7DD3B8)",
-              display: "inline-flex", alignItems: "center", justifyContent: "center",
-              margin: "0 auto 28px",
-              boxShadow: "0 0 0 12px rgba(94,220,154,0.12), 0 0 60px rgba(94,220,154,0.4)",
-              animation: "successPop 0.6s cubic-bezier(.2,1.3,.4,1)"
-            }}>
-              <IconCheck size={44} stroke={2.5} style={{ color: "#0A2A1A" }}/>
-            </div>
-            <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 40, fontWeight: 500, margin: "0 0 12px", letterSpacing: "-0.02em", color: "var(--ink)" }}>
-              ¡<GradientText>Conectada</GradientText>!
+      <div style={{ maxWidth: 520, width: "100%", margin: "0 auto", position: "relative", zIndex: 2, paddingTop: 80 }}>
+
+        {/* Icono animado */}
+        <div style={{ position: "relative", width: 160, height: 160, margin: "0 auto 32px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {step === "scanning" && [0, 0.5, 1].map(d => (
+            <div key={d} style={{
+              position: "absolute", inset: 16, borderRadius: "50%",
+              border: "2px solid rgba(184,164,255,0.4)",
+              animation: `pulse-ring 2.2s ${d}s ease-out infinite`
+            }}/>
+          ))}
+          <div style={{
+            width: 88, height: 88, borderRadius: 44,
+            background: step === "success"
+              ? "linear-gradient(135deg, #5EDC9A, #7DD3B8)"
+              : "linear-gradient(135deg, #2a2035, #0f0a1f)",
+            border: "1px solid rgba(184,164,255,0.3)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: step === "success" ? "#0A2A1A" : "#B8A4FF",
+            boxShadow: step === "success"
+              ? "0 0 0 12px rgba(94,220,154,0.12), 0 0 60px rgba(94,220,154,0.4)"
+              : "0 0 40px rgba(184,164,255,0.3)",
+            transition: "all 0.4s",
+          }}>
+            {step === "success" ? <IconCheck size={40} stroke={2.5}/> : <IconWatch size={40}/>}
+          </div>
+        </div>
+
+        {/* Estado: éxito */}
+        {step === "success" && (
+          <div style={{ textAlign: "center", animation: "heroTextIn 0.5s forwards" }}>
+            <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 36, fontWeight: 500, margin: "0 0 10px", letterSpacing: "-0.02em" }}>
+              ¡<GradientText>Conectado</GradientText>!
             </h1>
             <p style={{ color: "var(--ink-dim)", fontSize: 15 }}>
-              La pulsera de {CHILD_PROFILE.name} está lista para empezar.
+              La pulsera de {CHILD_PROFILE.name} está lista. Volviendo al panel…
             </p>
-            <style>{`@keyframes successPop { 0% {transform:scale(0.3);opacity:0;} 60% {transform:scale(1.1);opacity:1;} 100% {transform:scale(1);} }`}</style>
           </div>
-        ) : (
+        )}
+
+        {/* Estado: inactivo o escaneando */}
+        {(step === "idle" || step === "scanning" || step === "found") && (
           <>
-            <div style={{ position: "relative", width: 180, height: 180, margin: "0 auto 32px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {[0, 0.6, 1.2].map(d => (
-                <div key={d} style={{
-                  position: "absolute", inset: 20, borderRadius: "50%",
-                  border: "2px solid rgba(184,164,255,0.4)",
-                  animation: `pulse-ring 2.4s ${d}s ease-out infinite`
-                }}/>
-              ))}
-              <div style={{
-                width: 96, height: 96, borderRadius: 48,
-                background: "linear-gradient(135deg, #2a2035, #0f0a1f)",
-                border: "1px solid rgba(184,164,255,0.3)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                color: "#B8A4FF", boxShadow: "0 0 40px rgba(184,164,255,0.3)"
-              }}>
-                <IconWatch size={42}/>
+            <div style={{ textAlign: "center", marginBottom: 28 }}>
+              <div style={{ fontSize: 12, letterSpacing: 2, textTransform: "uppercase", color: "rgba(184,164,255,0.9)", fontWeight: 500, marginBottom: 10 }}>
+                Vinculación · CalmBand
               </div>
+              <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 34, fontWeight: 500, margin: "0 0 10px", letterSpacing: "-0.02em", color: "var(--ink)" }}>
+                Busca tu <GradientText>pulsera</GradientText>
+              </h1>
+              <p style={{ color: "var(--ink-dim)", fontSize: 14, lineHeight: 1.55, maxWidth: 380, margin: "0 auto" }}>
+                Asegúrate de que la pulsera esté encendida y cerca del dispositivo.
+                Pulsa el botón para comenzar la búsqueda por Bluetooth.
+              </p>
             </div>
 
-            <div style={{ fontSize: 12, letterSpacing: 2, textTransform: "uppercase", color: "rgba(184,164,255,0.9)", fontWeight: 500, marginBottom: 12 }}>
-              Paso 2 de 3 · Vinculación
-            </div>
-            <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 36, fontWeight: 500, margin: "0 0 12px", letterSpacing: "-0.02em", color: "var(--ink)" }}>
-              Conecta la <GradientText>pulsera</GradientText>
-            </h1>
-            <p style={{ color: "var(--ink-dim)", fontSize: 15, lineHeight: 1.55, maxWidth: 400, margin: "0 auto 36px" }}>
-              Mantén pulsado el botón lateral de la pulsera 3 segundos. Verás un código en la pantalla.
-            </p>
+            {/* Botón de escaneo */}
+            <button
+              onClick={handleScan}
+              disabled={step === "scanning"}
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                width: "100%", padding: "14px", borderRadius: 14, marginBottom: 20,
+                background: step === "scanning"
+                  ? "rgba(184,164,255,0.08)"
+                  : "linear-gradient(135deg, rgba(184,164,255,0.2), rgba(184,164,255,0.08))",
+                border: "1px solid rgba(184,164,255,0.35)",
+                color: "#D4C5FF", fontSize: 15, fontWeight: 600, cursor: step === "scanning" ? "not-allowed" : "pointer",
+                fontFamily: "Inter, sans-serif", transition: "all 0.2s",
+              }}
+            >
+              {step === "scanning" ? (
+                <>
+                  <span style={{
+                    width: 16, height: 16, border: "2px solid rgba(184,164,255,0.3)",
+                    borderTopColor: "#B8A4FF", borderRadius: 8,
+                    animation: "spin-slow 0.8s linear infinite", display: "inline-block"
+                  }}/>
+                  Buscando dispositivos…
+                </>
+              ) : (
+                <>
+                  <IconRefresh size={16}/>
+                  {step === "found" ? "Buscar de nuevo" : "Buscar dispositivo"}
+                </>
+              )}
+            </button>
 
-            <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 24 }}>
-              {code.map((c, i) => (
-                <input
-                  key={i}
-                  ref={el => inputsRef.current[i] = el}
-                  value={c}
-                  onChange={e => handle(i, e.target.value)}
-                  onKeyDown={e => handleKey(i, e)}
-                  inputMode="numeric"
-                  maxLength={1}
-                  disabled={step === "verifying"}
-                  style={{
-                    width: 54, height: 62, textAlign: "center",
-                    fontSize: 26, fontWeight: 600, fontFamily: "Inter, sans-serif",
-                    borderRadius: 12,
-                    border: `1px solid ${c ? "rgba(184,164,255,0.4)" : "var(--border-strong)"}`,
-                    background: c ? "rgba(184,164,255,0.08)" : "rgba(255,255,255,0.03)",
-                    color: "var(--ink)", outline: "none", transition: "all 0.2s",
-                    boxShadow: c ? "0 0 20px rgba(184,164,255,0.15)" : "none"
-                  }}
-                />
-              ))}
-            </div>
-
-            {step === "verifying" ? (
-              <div style={{ color: "var(--ink-muted)", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 10 }}>
-                <span style={{
-                  width: 14, height: 14, border: "2px solid rgba(184,164,255,0.3)",
-                  borderTopColor: "#B8A4FF", borderRadius: 7, animation: "spin-slow 0.8s linear infinite", display: "inline-block"
-                }}/>
-                Verificando...
+            {/* Lista de dispositivos encontrados */}
+            {devices.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ fontSize: 12, letterSpacing: 1, textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 4 }}>
+                  {devices.length} {devices.length === 1 ? "dispositivo encontrado" : "dispositivos encontrados"}
+                </div>
+                {devices.map(device => (
+                  <Card key={device.id} style={{ padding: "16px 18px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                      <div style={{
+                        width: 42, height: 42, borderRadius: 12, flexShrink: 0,
+                        background: "rgba(184,164,255,0.1)", border: "1px solid rgba(184,164,255,0.25)",
+                        display: "flex", alignItems: "center", justifyContent: "center", color: "#B8A4FF",
+                      }}>
+                        <IconWatch size={20}/>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 2 }}>{device.name}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: "var(--ink-dim)" }}>
+                          <span>{device.id}</span>
+                          <span>·</span>
+                          <span>Batería {device.battery}%</span>
+                        </div>
+                      </div>
+                      {/* Barras de señal */}
+                      <div style={{ display: "flex", alignItems: "flex-end", gap: 2, marginRight: 10 }}>
+                        {signalBars(device.rssi)}
+                      </div>
+                      <button
+                        onClick={() => handleConnect(device)}
+                        style={{
+                          padding: "8px 16px", borderRadius: 10,
+                          background: "linear-gradient(135deg, #B8A4FF, #8B7FD8)",
+                          border: "none", color: "#0D0824",
+                          fontSize: 13, fontWeight: 600, cursor: "pointer",
+                          fontFamily: "Inter, sans-serif",
+                        }}
+                      >
+                        Conectar
+                      </button>
+                    </div>
+                  </Card>
+                ))}
               </div>
-            ) : (
-              <div style={{ fontSize: 13, color: "var(--ink-faint)" }}>
-                ¿No ves el código?{" "}
-                <a onClick={autofill} style={{ color: "rgba(184,164,255,0.85)", textDecoration: "none", cursor: "pointer" }}>
-                  Demo · autocompletar
-                </a>
+            )}
+
+            {step === "idle" && devices.length === 0 && (
+              <div style={{ textAlign: "center", padding: "28px 0", fontSize: 13, color: "var(--ink-faint)" }}>
+                Pulsa el botón para comenzar la búsqueda
               </div>
             )}
           </>
         )}
+
+        {/* Estado: conectando */}
+        {step === "connecting" && (
+          <div style={{ textAlign: "center" }}>
+            <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 28, fontWeight: 500, margin: "0 0 10px" }}>
+              Conectando con <GradientText>{selectedDevice?.name}</GradientText>…
+            </h2>
+            <p style={{ color: "var(--ink-dim)", fontSize: 14 }}>
+              Verificando emparejamiento seguro
+            </p>
+            <div style={{ marginTop: 20, display: "flex", justifyContent: "center" }}>
+              <span style={{
+                width: 32, height: 32, border: "3px solid rgba(184,164,255,0.3)",
+                borderTopColor: "#B8A4FF", borderRadius: 16,
+                animation: "spin-slow 0.8s linear infinite", display: "inline-block"
+              }}/>
+            </div>
+          </div>
+        )}
       </div>
+
+      <style>{`
+        @keyframes pulse-ring {
+          0%   { transform: scale(0.85); opacity: 0.8; }
+          80%  { transform: scale(1.3);  opacity: 0; }
+          100% { opacity: 0; }
+        }
+      `}</style>
     </div>
   );
 }

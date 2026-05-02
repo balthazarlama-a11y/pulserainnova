@@ -79,7 +79,7 @@ export default function SimulationPanel() {
             }}>🎬</div>
             <div>
               <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "var(--ink)" }}>Simulación de Semana</h3>
-              <div style={{ fontSize: 12, color: "var(--ink-dim)" }}>Datos realistas · Sofía, 8 años</div>
+              <div style={{ fontSize: 12, color: "var(--ink-dim)" }}>Datos realistas · Simón, 10 años</div>
             </div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>

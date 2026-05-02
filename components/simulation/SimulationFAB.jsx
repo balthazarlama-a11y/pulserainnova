@@ -3,9 +3,12 @@
 import { useSimulation } from "@/lib/simulationContext";
 
 export default function SimulationFAB() {
-  const { active, playing, panelOpen, setPanelOpen, startSimulation, togglePlay, getTimeLabel } = useSimulation();
+  const {
+    active, playing, panelOpen, setPanelOpen,
+    startSimulation, triggerStressEvent, togglePlay, stopSimulation, getTimeLabel,
+  } = useSimulation();
 
-  const handleClick = () => {
+  const handleMainClick = () => {
     if (!active) {
       startSimulation();
     } else if (panelOpen) {
@@ -15,13 +18,50 @@ export default function SimulationFAB() {
     }
   };
 
-  const label = active ? getTimeLabel() : "Simular";
+  const label = active ? getTimeLabel() : "Simular semana";
 
   return (
     <>
+      {/* Botón secundario: Simular momento de estrés */}
       <button
-        onClick={handleClick}
-        title={active ? getTimeLabel() : "Simular semana"}
+        onClick={triggerStressEvent}
+        title="Simular momento de estrés"
+        style={{
+          position: "fixed",
+          bottom: active ? 100 : 92,
+          right: 24,
+          zIndex: 9997,
+          height: 44,
+          padding: "0 16px",
+          borderRadius: 22,
+          background: "rgba(236,91,107,0.15)",
+          border: "1px solid rgba(236,91,107,0.45)",
+          color: "#EC5B6B",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
+          fontSize: 13,
+          fontWeight: 600,
+          fontFamily: "Inter, sans-serif",
+          boxShadow: "0 4px 20px -4px rgba(236,91,107,0.35)",
+          transition: "all 0.3s cubic-bezier(.4,0,.2,1)",
+          whiteSpace: "nowrap",
+        }}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        Simular estrés
+      </button>
+
+      {/* Botón principal: Simulación de semana */}
+      <button
+        onClick={handleMainClick}
+        title={active ? getTimeLabel() : "Simulación de semana"}
         style={{
           position: "fixed",
           bottom: 24,
@@ -49,7 +89,6 @@ export default function SimulationFAB() {
           transition: "all 0.3s cubic-bezier(.4,0,.2,1)",
         }}
       >
-        {/* Play/Pause icon */}
         {active && playing ? (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
             <rect x="6" y="4" width="4" height="16" rx="1" />
@@ -67,15 +106,15 @@ export default function SimulationFAB() {
         )}
       </button>
 
-      {/* Pulsing ring when active */}
+      {/* Anillo pulsante cuando está activo */}
       {active && (
         <div
           style={{
             position: "fixed",
             bottom: 16,
             right: 16,
-            zIndex: 9997,
-            width: active ? 72 : 72,
+            zIndex: 9996,
+            width: 72,
             height: 72,
             borderRadius: 36,
             border: "2px solid rgba(184,164,255,0.5)",
