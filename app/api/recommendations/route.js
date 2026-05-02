@@ -120,6 +120,10 @@ export async function POST(request) {
   const { system, user } = buildPrompt({ stress, bpm, bpmResting, stressKey, childName, childAge, hour });
 
   // ── Llamada a NVIDIA NIM (compatible con OpenAI) ──────────────────────────
+  // AbortController manual — más compatible que AbortSignal.timeout()
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s
+
   let nvidiaRes;
   try {
     nvidiaRes = await fetch(NVIDIA_API_URL, {
@@ -136,17 +140,19 @@ export async function POST(request) {
         ],
         temperature: 0.65,
         top_p: 0.9,
-        max_tokens: 900,
+        max_tokens: 600, // reducido para respuesta más rápida
       }),
-      // Tiempo límite de 15s para no bloquear la UI
-      signal: AbortSignal.timeout(15000),
+      signal: controller.signal,
     });
   } catch (fetchErr) {
-    console.error("[recommendations] Error de red:", fetchErr.message);
-    return NextResponse.json(
-      { error: `Error de red: ${fetchErr.message}`, fallback: true },
-      { status: 502 }
-    );
+    clearTimeout(timeoutId);
+    const msg = fetchErr.name === "AbortError"
+      ? "Tiempo de espera agotado (30s) — NVIDIA no respondió"
+      : `Error de red: ${fetchErr.message}`;
+    console.error("[recommendations]", msg);
+    return NextResponse.json({ error: msg, fallback: true }, { status: 502 });
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   if (!nvidiaRes.ok) {
