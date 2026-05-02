@@ -317,7 +317,7 @@ const HowItWorks = () => {
     {
       n: "03",
       title: "Tu hijo se calma",
-      desc: "La pulsera vibra suave y sugiere un ejercicio de respiracion o un mini-juego.",
+      desc: "La pulsera se prende una luz suave y sugiere un ejercicio de respiración o un minijuego.",
       icon: <IconWind size={20} />,
       color: "#FFB4A2"
     },
@@ -406,9 +406,9 @@ const HowItWorks = () => {
 const Testimonials = () => {
   const quotes = [
     {
-      q: "Mi hija paso de tener crisis cada semana a manejarlas sola con los ejercicios. Ha sido transformador.",
+      q: "Mi hijo pasó de tener crisis cada semana a manejarlas solo con los ejercicios. Ha sido transformador.",
       name: "Marcela R.",
-      role: "Mama de Sofia, 8 anos",
+      role: "Mamá de Simón, 10 años",
       color: "#B8A4FF"
     },
     {
