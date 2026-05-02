@@ -219,27 +219,61 @@ const RecModal = ({ rec, state, onClose }) => {
 };
 
 // ─── Panel de recomendaciones IA ──────────────────────────────────────────────
-const RecommendationPanel = ({ stress }) => {
-  const [recs, setRecs] = useState(null);
-  const [loading, setLoading] = useState(false);
+const RecommendationPanel = ({ stress, bpm, bpmResting }) => {
+  const [recs, setRecs]           = useState(null);
+  const [loading, setLoading]     = useState(false);
+  const [isAI, setIsAI]           = useState(false);       // true = respuesta real de NVIDIA
+  const [aiError, setAiError]     = useState(null);        // mensaje de error si falla la IA
   const [selectedRec, setSelectedRec] = useState(null);
-  const state = stressState(stress);
+
+  const state     = stressState(stress);
   const stressKey = getStressKey(stress);
 
-  // Etiqueta contextual según la fase del episodio
   const phaseLabel = {
-    calm:     { text: "Estado tranquilo",   color: "#A8E6CF" },
-    mild:     { text: "Pre-episodio · Prevención",  color: "#F5D06F" },
+    calm:     { text: "Estado tranquilo",             color: "#A8E6CF" },
+    mild:     { text: "Pre-episodio · Prevención",    color: "#F5D06F" },
     moderate: { text: "Estrés moderado · Intervenir", color: "#FFB4A2" },
     high:     { text: "Durante el episodio · Crisis", color: "#EC5B6B" },
   }[stressKey];
 
   const fetchRecs = useCallback(async () => {
     setLoading(true);
-    await new Promise(r => setTimeout(r, 380));
-    setRecs(RECOMMENDATIONS[stressKey] || RECOMMENDATIONS.mild);
-    setLoading(false);
-  }, [stressKey]);
+    setAiError(null);
+
+    try {
+      // ── Llamar a la API real (server-side → NVIDIA NIM) ──────────────────
+      const res = await fetch("/api/recommendations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stress,
+          bpm:        bpm        ?? 80,
+          bpmResting: bpmResting ?? CHILD_PROFILE.bpmResting,
+          stressKey,
+          childName:  CHILD_PROFILE.name,
+          childAge:   CHILD_PROFILE.age,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.fallback) {
+        // La API indicó fallback (sin key, error de red, etc.)
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+
+      setRecs(data.recommendations);
+      setIsAI(true);
+    } catch (err) {
+      // ── Fallback silencioso a datos locales ───────────────────────────────
+      console.warn("[RecommendationPanel] Usando fallback local:", err.message);
+      setAiError(err.message);
+      setRecs(RECOMMENDATIONS[stressKey] || RECOMMENDATIONS.mild);
+      setIsAI(false);
+    } finally {
+      setLoading(false);
+    }
+  }, [stress, bpm, bpmResting, stressKey]);
 
   useEffect(() => { fetchRecs(); }, [fetchRecs]);
 
@@ -258,17 +292,38 @@ const RecommendationPanel = ({ stress }) => {
               <IconSparkles size={12}/> Recomendación IA
             </div>
             <h3 style={{ margin: "0 0 6px", fontFamily: "Fraunces, serif", fontSize: 22, fontWeight: 500, letterSpacing: -0.3 }}>Para este momento</h3>
-            {/* Etiqueta de fase */}
-            <div style={{
-              display: "inline-flex", alignItems: "center", gap: 6,
-              fontSize: 11, fontWeight: 600, letterSpacing: 0.4,
-              color: phaseLabel.color,
-              background: `${phaseLabel.color}18`,
-              border: `1px solid ${phaseLabel.color}35`,
-              borderRadius: 99, padding: "3px 10px",
-            }}>
-              <span style={{ width: 5, height: 5, borderRadius: "50%", background: phaseLabel.color }}/>
-              {phaseLabel.text}
+            {/* Fila de badges: fase + fuente de datos */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+              <div style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                fontSize: 11, fontWeight: 600, letterSpacing: 0.4,
+                color: phaseLabel.color,
+                background: `${phaseLabel.color}18`,
+                border: `1px solid ${phaseLabel.color}35`,
+                borderRadius: 99, padding: "3px 10px",
+              }}>
+                <span style={{ width: 5, height: 5, borderRadius: "50%", background: phaseLabel.color }}/>
+                {phaseLabel.text}
+              </div>
+              {/* Badge: IA real vs. fallback local */}
+              {!loading && recs && (
+                <div style={{
+                  display: "inline-flex", alignItems: "center", gap: 5,
+                  fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
+                  color:      isAI ? "#76b900" : "var(--ink-faint)",
+                  background: isAI ? "rgba(118,185,0,0.10)" : "rgba(255,255,255,0.04)",
+                  border:     `1px solid ${isAI ? "rgba(118,185,0,0.30)" : "var(--border)"}`,
+                  borderRadius: 99, padding: "3px 9px",
+                  textTransform: "uppercase",
+                }}>
+                  <span style={{
+                    width: 5, height: 5, borderRadius: "50%",
+                    background: isAI ? "#76b900" : "var(--ink-faint)",
+                    animation: isAI ? "simPulseSmall 2s ease-in-out infinite" : "none",
+                  }}/>
+                  {isAI ? "NVIDIA NIM · en vivo" : "Datos locales"}
+                </div>
+              )}
             </div>
           </div>
           {/* Botón actualizar */}
@@ -282,9 +337,24 @@ const RecommendationPanel = ({ stress }) => {
               ? <span style={{ width: 10, height: 10, border: "1.5px solid rgba(255,255,255,0.2)", borderTopColor: "#B8A4FF", borderRadius: 5, animation: "spin-slow 0.8s linear infinite", display: "inline-block" }}/>
               : <IconRefresh size={12}/>
             }
-            {loading ? "Actualizando" : "Actualizar"}
+            {loading ? "Consultando IA…" : "Actualizar"}
           </button>
         </div>
+
+        {/* Banner de error (solo si falló la IA y se usa fallback) */}
+        {aiError && !loading && (
+          <div style={{
+            marginBottom: 12, padding: "8px 12px", borderRadius: 8,
+            background: "rgba(236,91,107,0.08)", border: "1px solid rgba(236,91,107,0.22)",
+            fontSize: 11, color: "#EC5B6B", display: "flex", alignItems: "center", gap: 6,
+          }}>
+            <IconAlertTriangle size={11}/>
+            IA no disponible · usando datos locales.{" "}
+            <span style={{ color: "rgba(236,91,107,0.6)", fontStyle: "italic" }}>
+              ({aiError.length > 60 ? aiError.slice(0, 60) + "…" : aiError})
+            </span>
+          </div>
+        )}
 
         {loading && !recs ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -304,7 +374,6 @@ const RecommendationPanel = ({ stress }) => {
                   border: "1px solid var(--border)",
                   display: "flex", alignItems: "center", gap: 14,
                   cursor: "pointer", transition: "all 0.2s",
-                  // Hover se maneja con CSS inline no disponible; el cursor pointer indica interactividad
                 }}
                 onMouseEnter={e => {
                   e.currentTarget.style.background = `${state.hex}10`;
@@ -527,7 +596,11 @@ export default function DashboardClient({ user, profile }) {
               La pulsera se prende una luz cuando detecta un nivel de estrés elevado.
             </div>
           </Card>
-          <RecommendationPanel stress={stress}/>
+          <RecommendationPanel
+            stress={stress}
+            bpm={avgBpm}
+            bpmResting={CHILD_PROFILE.bpmResting}
+          />
         </div>
 
         {/* Fila 2: gráfico 24h */}
