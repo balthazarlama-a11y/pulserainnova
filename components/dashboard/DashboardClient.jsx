@@ -233,8 +233,11 @@ const RecommendationPanel = ({ stress, bpm, bpmResting }) => {
   // Esto evita que fetchRecs se recree (y la IA se llame) en cada tick de simulación.
   const stressRef    = useRef(stress);
   const bpmRef       = useRef(bpm);
+  const lastFetchRef = useRef(0); // timestamp del último request exitoso
   stressRef.current  = stress;
   bpmRef.current     = bpm;
+
+  const COOLDOWN_MS = 15_000; // mínimo 15s entre requests automáticos
 
   const phaseLabel = {
     calm:     { text: "Estado tranquilo",              color: "#A8E6CF" },
@@ -244,9 +247,11 @@ const RecommendationPanel = ({ stress, bpm, bpmResting }) => {
   }[stressKey];
 
   // fetchRecs solo depende de stressKey y bpmResting — no de stress/bpm directamente.
-  // Así la IA se llama una vez por cada cambio de categoría (calm→mild→moderate→high),
-  // no cada segundo durante la simulación.
-  const fetchRecs = useCallback(async () => {
+  // Además aplica un cooldown de 15s para no spam requests durante la simulación.
+  const fetchRecs = useCallback(async (force = false) => {
+    const now = Date.now();
+    if (!force && now - lastFetchRef.current < COOLDOWN_MS) return;
+
     setLoading(true);
     setAiError(null);
 
@@ -272,6 +277,7 @@ const RecommendationPanel = ({ stress, bpm, bpmResting }) => {
 
       setRecs(data.recommendations);
       setIsAI(true);
+      lastFetchRef.current = Date.now();
     } catch (err) {
       console.warn("[RecommendationPanel] Fallback local:", err.message);
       setAiError(err.message);
@@ -318,24 +324,24 @@ const RecommendationPanel = ({ stress, bpm, bpmResting }) => {
                 <div style={{
                   display: "inline-flex", alignItems: "center", gap: 5,
                   fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
-                  color:      isAI ? "#76b900" : "var(--ink-faint)",
-                  background: isAI ? "rgba(118,185,0,0.10)" : "rgba(255,255,255,0.04)",
-                  border:     `1px solid ${isAI ? "rgba(118,185,0,0.30)" : "var(--border)"}`,
+                  color:      isAI ? "#76b900" : "#ff6b6b",
+                  background: isAI ? "rgba(118,185,0,0.10)" : "rgba(255,107,107,0.10)",
+                  border:     `1px solid ${isAI ? "rgba(118,185,0,0.30)" : "rgba(255,107,107,0.30)"}`,
                   borderRadius: 99, padding: "3px 9px",
                   textTransform: "uppercase",
                 }}>
                   <span style={{
                     width: 5, height: 5, borderRadius: "50%",
-                    background: isAI ? "#76b900" : "var(--ink-faint)",
+                    background: isAI ? "#76b900" : "#ff6b6b",
                     animation: isAI ? "simPulseSmall 2s ease-in-out infinite" : "none",
                   }}/>
-                  {isAI ? "NVIDIA NIM · en vivo" : "Datos locales"}
+                  {isAI ? "NVIDIA NIM · en vivo" : "Sin conexión"}
                 </div>
               )}
             </div>
           </div>
           {/* Botón actualizar */}
-          <button onClick={fetchRecs} disabled={loading} style={{
+          <button onClick={() => fetchRecs(true)} disabled={loading} style={{
             background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)",
             borderRadius: 8, padding: "6px 10px", color: "var(--ink-muted)", cursor: "pointer", fontSize: 12,
             display: "inline-flex", alignItems: "center", gap: 6,
