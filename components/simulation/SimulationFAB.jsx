@@ -25,7 +25,7 @@ export default function SimulationFAB() {
       {/* Botón secundario: Simular momento de estrés */}
       <button
         onClick={triggerStressEvent}
-        title="Simular momento de estrés"
+        title="Simular episodio de ansiedad"
         style={{
           position: "fixed",
           bottom: active ? 100 : 92,
@@ -55,7 +55,7 @@ export default function SimulationFAB() {
           <line x1="12" y1="9" x2="12" y2="13"/>
           <line x1="12" y1="17" x2="12.01" y2="17"/>
         </svg>
-        Simular estrés
+        Simular ansiedad
       </button>
 
       {/* Botón principal: Simulación de semana */}

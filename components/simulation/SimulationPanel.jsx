@@ -203,7 +203,7 @@ export default function SimulationPanel() {
             <div style={{ fontSize: 28, fontWeight: 700, color: state.hex, lineHeight: 1, fontVariantNumeric: "tabular-nums", transition: "color 0.4s" }}>
               {simData.stress}
             </div>
-            <div style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 4 }}>estrés</div>
+            <div style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 4 }}>ansiedad</div>
           </div>
           <div style={{
             padding: 14, borderRadius: 12,
@@ -346,8 +346,8 @@ export default function SimulationPanel() {
           display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8,
         }}>
           {[
-            { label: "Prom. estrés", value: dayData.summary.avgStress, accent: stressState(dayData.summary.avgStress).hex },
-            { label: "Pico", value: dayData.summary.peakStress, accent: stressState(dayData.summary.peakStress).hex },
+            { label: "Prom. ansiedad", value: dayData.summary.avgStress, accent: stressState(dayData.summary.avgStress).hex },
+            { label: "Pico ansiedad", value: dayData.summary.peakStress, accent: stressState(dayData.summary.peakStress).hex },
             { label: "Ejercicios", value: dayData.summary.exercisesCount, accent: "#B8A4FF" },
             { label: "Sueño", value: dayData.summary.sleepHours, accent: "#A8E6CF" },
           ].map((item, i) => (

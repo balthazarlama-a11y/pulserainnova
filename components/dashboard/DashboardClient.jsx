@@ -220,34 +220,43 @@ const RecModal = ({ rec, state, onClose }) => {
 
 // ─── Panel de recomendaciones IA ──────────────────────────────────────────────
 const RecommendationPanel = ({ stress, bpm, bpmResting }) => {
-  const [recs, setRecs]           = useState(null);
-  const [loading, setLoading]     = useState(false);
-  const [isAI, setIsAI]           = useState(false);       // true = respuesta real de NVIDIA
-  const [aiError, setAiError]     = useState(null);        // mensaje de error si falla la IA
+  const [recs, setRecs]               = useState(null);
+  const [loading, setLoading]         = useState(false);
+  const [isAI, setIsAI]               = useState(false);
+  const [aiError, setAiError]         = useState(null);
   const [selectedRec, setSelectedRec] = useState(null);
 
   const state     = stressState(stress);
   const stressKey = getStressKey(stress);
 
+  // Refs para capturar los valores más recientes sin hacerlos dependencias del callback.
+  // Esto evita que fetchRecs se recree (y la IA se llame) en cada tick de simulación.
+  const stressRef    = useRef(stress);
+  const bpmRef       = useRef(bpm);
+  stressRef.current  = stress;
+  bpmRef.current     = bpm;
+
   const phaseLabel = {
-    calm:     { text: "Estado tranquilo",             color: "#A8E6CF" },
-    mild:     { text: "Pre-episodio · Prevención",    color: "#F5D06F" },
-    moderate: { text: "Estrés moderado · Intervenir", color: "#FFB4A2" },
-    high:     { text: "Durante el episodio · Crisis", color: "#EC5B6B" },
+    calm:     { text: "Estado tranquilo",              color: "#A8E6CF" },
+    mild:     { text: "Pre-episodio · Prevención",     color: "#F5D06F" },
+    moderate: { text: "Ansiedad moderada · Intervenir",color: "#FFB4A2" },
+    high:     { text: "Durante el episodio · Crisis",  color: "#EC5B6B" },
   }[stressKey];
 
+  // fetchRecs solo depende de stressKey y bpmResting — no de stress/bpm directamente.
+  // Así la IA se llama una vez por cada cambio de categoría (calm→mild→moderate→high),
+  // no cada segundo durante la simulación.
   const fetchRecs = useCallback(async () => {
     setLoading(true);
     setAiError(null);
 
     try {
-      // ── Llamar a la API real (server-side → NVIDIA NIM) ──────────────────
       const res = await fetch("/api/recommendations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          stress,
-          bpm:        bpm        ?? 80,
+          stress:     stressRef.current,            // valor actual via ref
+          bpm:        bpmRef.current ?? 80,
           bpmResting: bpmResting ?? CHILD_PROFILE.bpmResting,
           stressKey,
           childName:  CHILD_PROFILE.name,
@@ -258,23 +267,22 @@ const RecommendationPanel = ({ stress, bpm, bpmResting }) => {
       const data = await res.json();
 
       if (!res.ok || data.fallback) {
-        // La API indicó fallback (sin key, error de red, etc.)
         throw new Error(data.error || `HTTP ${res.status}`);
       }
 
       setRecs(data.recommendations);
       setIsAI(true);
     } catch (err) {
-      // ── Fallback silencioso a datos locales ───────────────────────────────
-      console.warn("[RecommendationPanel] Usando fallback local:", err.message);
+      console.warn("[RecommendationPanel] Fallback local:", err.message);
       setAiError(err.message);
       setRecs(RECOMMENDATIONS[stressKey] || RECOMMENDATIONS.mild);
       setIsAI(false);
     } finally {
       setLoading(false);
     }
-  }, [stress, bpm, bpmResting, stressKey]);
+  }, [stressKey, bpmResting]); // ← solo cambia cuando cambia la categoría de ansiedad
 
+  // Llamar a la IA cuando cambia la categoría (calm/mild/moderate/high)
   useEffect(() => { fetchRecs(); }, [fetchRecs]);
 
   const iconMap = {
