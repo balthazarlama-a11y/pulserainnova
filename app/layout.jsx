@@ -4,7 +4,7 @@ import ClientProviders from "@/components/providers/ClientProviders";
 
 export const metadata = {
   title: "CalmBand",
-  description: "Wellness-focused wearable for kids, powered by Supabase auth."
+  description: "Wellness-focused wearable for kids, simulation mode."
 };
 
 export default function RootLayout({ children }) {

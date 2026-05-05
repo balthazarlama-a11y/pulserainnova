@@ -4,13 +4,16 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { SIMULATION_ONLY } from "@/lib/simulationMode";
 
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const { user, loading, supabase } = useAuth();
+  const showAuthActions = !SIMULATION_ONLY;
 
   const handleSignOut = async () => {
+    if (SIMULATION_ONLY) return;
     await supabase.auth.signOut();
     router.push("/sign-in");
     router.refresh();
@@ -59,7 +62,7 @@ export default function Navbar() {
             </Link>
           ))}
 
-          {loading ? null : user ? (
+          {showAuthActions && (loading ? null : user ? (
             <Button size="sm" variant="ghost" onClick={handleSignOut}>
               Salir
             </Button>
@@ -72,7 +75,7 @@ export default function Navbar() {
                 <Link href="/sign-up">Sign up</Link>
               </Button>
             </>
-          )}
+          ))}
         </nav>
       </div>
     </header>

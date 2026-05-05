@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
+import { SIMULATION_ONLY } from "@/lib/simulationMode";
 
 const PROTECTED_PATHS = ["/dashboard", "/kids", "/pairing", "/history"];
 const AUTH_PATHS = ["/sign-in", "/sign-up"];
 
 export async function middleware(request) {
+  if (SIMULATION_ONLY) {
+    return NextResponse.next();
+  }
   const { response, user } = await updateSession(request);
   const path = request.nextUrl.pathname;
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useSimulation } from "@/lib/simulationContext";
 
 export default function SimulationFAB() {
@@ -7,6 +9,27 @@ export default function SimulationFAB() {
     active, playing, panelOpen, setPanelOpen,
     startSimulation, triggerStressEvent, togglePlay, stopSimulation, getTimeLabel,
   } = useSimulation();
+  const pathname = usePathname();
+  const [isCompact, setIsCompact] = useState(false);
+  const [isHidden, setIsHidden] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(max-width: 768px)");
+    const update = () => setIsCompact(media.matches);
+    update();
+    media.addEventListener("change", update);
+
+    const handleImmersive = (e) => setIsHidden(e.detail);
+    window.addEventListener("immersive-mode-change", handleImmersive);
+
+    return () => {
+      media.removeEventListener("change", update);
+      window.removeEventListener("immersive-mode-change", handleImmersive);
+    };
+  }, []);
+
+  if (isHidden) return null;
 
   const handleMainClick = () => {
     if (!active) {
@@ -19,6 +42,9 @@ export default function SimulationFAB() {
   };
 
   const label = active ? getTimeLabel() : "Simular semana";
+  const isDashboard = pathname === "/dashboard";
+  const mainBottom = isDashboard && !isCompact ? 104 : 24;
+  const secondaryBottom = mainBottom + 64;
 
   return (
     <>
@@ -26,16 +52,17 @@ export default function SimulationFAB() {
       <button
         onClick={triggerStressEvent}
         title="Simular episodio de ansiedad"
+        className="simulation-fab-secondary"
         style={{
           position: "fixed",
-          bottom: active ? 100 : 92,
+          bottom: secondaryBottom,
           right: 24,
           zIndex: 9997,
           height: 44,
           padding: "0 16px",
           borderRadius: 22,
-          background: "rgba(236,91,107,0.15)",
-          border: "1px solid rgba(236,91,107,0.45)",
+          background: "rgba(236,91,107,0.12)",
+          border: "1px solid rgba(236,91,107,0.4)",
           color: "#EC5B6B",
           cursor: "pointer",
           display: "flex",
@@ -62,15 +89,16 @@ export default function SimulationFAB() {
       <button
         onClick={handleMainClick}
         title={active ? getTimeLabel() : "Simulación de semana"}
+        className="simulation-fab"
         style={{
           position: "fixed",
-          bottom: 24,
+          bottom: mainBottom,
           right: 24,
           zIndex: 9998,
-          width: active ? "auto" : 56,
+          width: "auto",
           height: 56,
           minWidth: 56,
-          padding: active ? "0 20px 0 16px" : 0,
+          padding: "0 20px 0 16px",
           borderRadius: 28,
           background: "linear-gradient(135deg, #B8A4FF, #8B7FD8)",
           border: "none",
@@ -99,19 +127,18 @@ export default function SimulationFAB() {
             <polygon points="6,4 20,12 6,20" />
           </svg>
         )}
-        {active && (
-          <span style={{ fontSize: 12, letterSpacing: 0.3, whiteSpace: "nowrap" }}>
-            {label}
-          </span>
-        )}
+        <span style={{ fontSize: 12, letterSpacing: 0.3, whiteSpace: "nowrap" }}>
+          {label}
+        </span>
       </button>
 
       {/* Anillo pulsante cuando está activo */}
       {active && (
         <div
+          className="simulation-fab-ring"
           style={{
             position: "fixed",
-            bottom: 16,
+            bottom: mainBottom - 8,
             right: 16,
             zIndex: 9996,
             width: 72,

@@ -17,6 +17,8 @@ import {
   getStressKey
 } from "@/lib/mockData";
 import { useSimulation } from "@/lib/simulationContext";
+import { SIMULATION_ONLY } from "@/lib/simulationMode";
+import { normalizeAccent, SEMANTIC_COLORS } from "@/lib/utils";
 
 // ─── Anillo de estrés ────────────────────────────────────────────────────────
 const StressRing = ({ value, size = 260 }) => {
@@ -41,7 +43,9 @@ const StressRing = ({ value, size = 260 }) => {
       </svg>
       <div style={{ position: "absolute", inset: 12, borderRadius: "50%", background: `radial-gradient(circle, ${state.hex}22, transparent 70%)`, pointerEvents: "none", transition: "background 0.4s" }}/>
       <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ fontSize: 12, letterSpacing: 2, textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 8 }}>Nivel de calma</div>
+        <div style={{ fontSize: 12, letterSpacing: 2, textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 8 }}>
+          <span title="Índice estimado de calma basado en HRV y pulso" style={{ cursor: "help" }}>Nivel de calma</span>
+        </div>
         <div style={{ fontFamily: "Fraunces, serif", fontSize: 72, fontWeight: 500, lineHeight: 1, color: state.hex, letterSpacing: "-0.04em", transition: "color 0.4s" }}>{100 - value}</div>
         <div style={{ fontSize: 14, color: "var(--ink-muted)", marginTop: 6, fontWeight: 500 }}>{state.label}</div>
       </div>
@@ -101,15 +105,18 @@ const StressChart = ({ stress, hourlyData }) => {
 // ─── Barras semanales ─────────────────────────────────────────────────────────
 const WeekBars = ({ stress, weeklyOverride }) => {
   const defaultWeekly = useMemo(() => getWeeklyData(), []);
-  const weekly = weeklyOverride || defaultWeekly;
+  const weekly = Array.isArray(weeklyOverride) && weeklyOverride.length
+    ? weeklyOverride
+    : defaultWeekly;
   return (
     <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 120 }}>
       {weekly.map((d, i) => {
-        const s = stressState(d.avgStress);
+        const avgStress = Math.max(8, Math.min(95, Number.isFinite(d.avgStress) ? d.avgStress : 10));
+        const s = stressState(avgStress);
         return (
           <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
             <div style={{
-              width: "100%", height: `${d.avgStress}%`, borderRadius: 8,
+              width: "100%", height: `${avgStress}%`, borderRadius: 8,
               background: `linear-gradient(180deg, ${s.hex}, ${s.hex}77)`,
               boxShadow: d.isToday ? `0 0 16px ${s.hex}66` : "none",
               border: d.isToday ? `1px solid ${s.hex}` : "none",
@@ -121,6 +128,31 @@ const WeekBars = ({ stress, weeklyOverride }) => {
       })}
     </div>
   );
+};
+
+// ─── Etiquetas de tendencia para actividad diaria ───────────────────────────
+const describeActivityTrend = (items, index) => {
+  const current = items[index];
+  const currentStress = Number.isFinite(current?.stress) ? current.stress : null;
+  const prev = index > 0 ? items[index - 1] : null;
+  const prevStress = Number.isFinite(prev?.stress) ? prev.stress : null;
+
+  if (currentStress == null) return "Cambio en el estado";
+  if (prevStress == null) {
+    if (currentStress >= 70) return "Inicio del día con estrés alto";
+    if (currentStress <= 25) return "Inicio del día con calma";
+    if (currentStress >= 50) return "Inicio del día con estrés moderado";
+    return "Inicio del día estable";
+  }
+
+  const delta = currentStress - prevStress;
+  if (delta >= 12) return "Subida marcada de estrés";
+  if (delta >= 5) return "Subida leve de estrés";
+  if (delta <= -12) return "Descenso marcado de estrés";
+  if (delta <= -5) return "Descenso leve de estrés";
+  if (currentStress >= 70) return "Pico de estrés sostenido";
+  if (currentStress <= 25) return "Momento de calma sostenida";
+  return "Nivel de estrés estable";
 };
 
 // ─── Modal de recomendación ───────────────────────────────────────────────────
@@ -219,7 +251,7 @@ const RecModal = ({ rec, state, onClose }) => {
 };
 
 // ─── Panel de recomendaciones IA ──────────────────────────────────────────────
-const RecommendationPanel = ({ stress, bpm, bpmResting }) => {
+const RecommendationPanel = ({ stress, bpm, bpmResting, hourlyData }) => {
   const [recs, setRecs]               = useState(null);
   const [loading, setLoading]         = useState(false);
   const [isAI, setIsAI]               = useState(false);
@@ -240,11 +272,55 @@ const RecommendationPanel = ({ stress, bpm, bpmResting }) => {
   const COOLDOWN_MS = 15_000; // mínimo 15s entre requests automáticos
 
   const phaseLabel = {
-    calm:     { text: "Estado tranquilo",              color: "#A8E6CF" },
-    mild:     { text: "Pre-episodio · Prevención",     color: "#F5D06F" },
-    moderate: { text: "Ansiedad moderada · Intervenir",color: "#FFB4A2" },
-    high:     { text: "Durante el episodio · Crisis",  color: "#EC5B6B" },
+    calm:     { text: "Estado tranquilo",              color: SEMANTIC_COLORS.calm },
+    mild:     { text: "Atención preventiva",           color: SEMANTIC_COLORS.attention },
+    moderate: { text: "Estrés moderado · Intervenir",  color: SEMANTIC_COLORS.danger },
+    high:     { text: "Estrés alto · Crisis",          color: SEMANTIC_COLORS.danger },
   }[stressKey];
+
+  const narrative = useMemo(() => {
+    const values = Array.isArray(hourlyData) ? hourlyData.map(hd => {
+      const val = hd?.avgStress ?? hd?.stressLevel ?? hd?.stress;
+      return Number.isFinite(val) ? val : null;
+    }) : [];
+    const valid = values.filter(v => v != null);
+    if (!valid.length) {
+      return {
+        summary: "Hoy el nivel de estrés se mantuvo dentro de rangos esperables, con variaciones suaves a lo largo del día.",
+        recommendation: "Recomendación: sostener pausas breves de respiración antes de momentos exigentes."
+      };
+    }
+
+    const maxVal = Math.max(...valid);
+    const minVal = Math.min(...valid);
+    const maxIndex = values.indexOf(maxVal);
+    const minIndex = values.indexOf(minVal);
+    const delta = maxVal - minVal;
+
+    const timeLabel = (hour) => {
+      if (hour < 6) return "madrugada";
+      if (hour < 12) return "media mañana";
+      if (hour < 17) return "tarde";
+      if (hour < 21) return "noche";
+      return "final del día";
+    };
+
+    const variability = delta >= 35
+      ? "muy variable"
+      : delta >= 20
+        ? "con cambios visibles"
+        : "bastante estable";
+
+    const summary = `Hoy el estrés estuvo ${variability}, con el punto más alto en la ${timeLabel(maxIndex)} y más calma hacia la ${timeLabel(minIndex)}.`;
+    const recommendation = {
+      calm: "Recomendación: mantener rutinas suaves y pausas activas cortas.",
+      mild: "Recomendación: anticipar pausas de respiración antes de momentos exigentes.",
+      moderate: "Recomendación: reforzar ejercicios guiados cuando suba la tensión.",
+      high: "Recomendación: priorizar un espacio seguro y respiración guiada ante picos de estrés.",
+    }[stressKey] || "Recomendación: sostener pausas de respiración para regular el ritmo.";
+
+    return { summary, recommendation };
+  }, [hourlyData, stressKey]);
 
   // fetchRecs solo depende de stressKey y bpmResting — no de stress/bpm directamente.
   // Además aplica un cooldown de 15s para no spam requests durante la simulación.
@@ -299,7 +375,7 @@ const RecommendationPanel = ({ stress, bpm, bpmResting }) => {
 
   return (
     <>
-      <Card style={{ padding: 26, height: "100%" }}>
+      <Card style={{ padding: 26, height: "100%", "--card-glow": `${state.hex}22` }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
           <div>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, letterSpacing: 1.4, textTransform: "uppercase", color: "rgba(184,164,255,0.9)", marginBottom: 6 }}>
@@ -363,17 +439,30 @@ const RecommendationPanel = ({ stress, bpm, bpmResting }) => {
             fontSize: 11, color: "#EC5B6B", display: "flex", alignItems: "center", gap: 6,
           }}>
             <IconAlertTriangle size={11}/>
-            IA no disponible · usando datos locales.{" "}
-            <span style={{ color: "rgba(236,91,107,0.6)", fontStyle: "italic" }}>
-              ({aiError.length > 60 ? aiError.slice(0, 60) + "…" : aiError})
-            </span>
+            Sin conexión · mostrando ejercicios guardados
           </div>
         )}
 
-        {loading && !recs ? (
+        <div style={{
+          marginBottom: 14, padding: "12px 14px", borderRadius: 12,
+          background: "rgba(255,255,255,0.03)", border: "1px solid var(--border)",
+          fontSize: 13, color: "var(--ink-dim)", lineHeight: 1.5
+        }}>
+          <div style={{ fontSize: 11, letterSpacing: 1.2, textTransform: "uppercase", color: "var(--ink-faint)", marginBottom: 6 }}>
+            Resumen del día
+          </div>
+          <div style={{ marginBottom: 6 }}>{narrative.summary}</div>
+          <div style={{ color: "var(--ink-muted)" }}>{narrative.recommendation}</div>
+        </div>
+
+        {loading ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {[0,1,2].map(i => (
-              <div key={i} style={{ height: 72, borderRadius: 12, background: "linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.08), rgba(255,255,255,0.03))", backgroundSize: "200% 100%", animation: "sheen 1.8s linear infinite" }}/>
+              <div key={i} className="animate-pulse" style={{
+                height: 72,
+                borderRadius: 12,
+                background: "rgba(255,255,255,0.05)",
+              }}/>
             ))}
           </div>
         ) : (
@@ -436,8 +525,8 @@ const Stat = ({ label, value, sub, accent, action, onAction }) => (
       <button
         onClick={onAction}
         style={{
-          marginTop: 8, fontSize: 11, color: accent || "#B8A4FF",
-          background: "transparent", border: `1px solid ${accent || "#B8A4FF"}40`,
+          marginTop: 8, fontSize: 11, color: SEMANTIC_COLORS.brand,
+          background: "transparent", border: `1px solid ${SEMANTIC_COLORS.brand}40`,
           borderRadius: 6, padding: "3px 8px", cursor: "pointer",
           display: "inline-flex", alignItems: "center", gap: 4,
           fontFamily: "Inter, sans-serif",
@@ -452,7 +541,7 @@ const Stat = ({ label, value, sub, accent, action, onAction }) => (
 // ─── Tarjeta del hub de navegación ───────────────────────────────────────────
 const HubCard = ({ href, icon, title, desc, accent }) => (
   <Link href={href} style={{ textDecoration: "none", color: "inherit" }}>
-    <Card hover style={{ padding: 22, height: "100%", cursor: "pointer" }}>
+    <Card hover style={{ padding: 22, height: "100%", cursor: "pointer", "--card-glow": `${accent}22` }}>
       <div style={{
         width: 44, height: 44, borderRadius: 12,
         background: `linear-gradient(135deg, ${accent}40, ${accent}10)`,
@@ -490,6 +579,7 @@ export default function DashboardClient({ user, profile }) {
     : baseHourlyData;
   const simWeekly = sim.active ? sim.getSimWeeklyData() : null;
   const simEvents = sim.active ? sim.getVisibleEvents() : null;
+  const activityItems = simEvents || TODAY_ACTIVITY;
 
   const state = stressState(stress);
   const now = new Date();
@@ -498,6 +588,7 @@ export default function DashboardClient({ user, profile }) {
   const avgBpm = sim.active ? (simData?.bpm || 72) : baseBpm + Math.floor(stress / 5);
 
   const handleSignOut = async () => {
+    if (SIMULATION_ONLY) return;
     await supabase.auth.signOut();
     router.push("/sign-in");
     router.refresh();
@@ -538,11 +629,13 @@ export default function DashboardClient({ user, profile }) {
             }}>{x.i}</Link>
           ))}
         </div>
-        <button onClick={handleSignOut} title="Salir" style={{
-          width: 44, height: 44, borderRadius: 12,
-          background: "transparent", border: "1px solid transparent",
-          color: "var(--ink-dim)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"
-        }}><IconLogOut size={18}/></button>
+        {!SIMULATION_ONLY && (
+          <button onClick={handleSignOut} title="Salir" style={{
+            width: 44, height: 44, borderRadius: 12,
+            background: "transparent", border: "1px solid transparent",
+            color: "var(--ink-dim)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"
+          }}><IconLogOut size={18}/></button>
+        )}
       </aside>
 
       {/* Contenido principal */}
@@ -592,7 +685,7 @@ export default function DashboardClient({ user, profile }) {
 
         {/* Fila 1: anillo + recomendaciones */}
         <div className="dashboard-row" style={{ display: "grid", gridTemplateColumns: "380px 1fr", gap: 24, marginBottom: 24 }}>
-          <Card style={{ padding: 28, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20 }}>
+          <Card style={{ padding: 28, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20, "--card-glow": `${state.hex}22` }}>
             <StressRing value={stress} size={260}/>
             <div style={{
               display: "inline-flex", alignItems: "center", gap: 10, padding: "10px 16px 10px 12px",
@@ -606,7 +699,7 @@ export default function DashboardClient({ user, profile }) {
               {state.key === "high"     && "Muy ansioso · intervenir ya"}
             </div>
             <div style={{ fontSize: 12, color: "var(--ink-faint)", textAlign: "center", maxWidth: 280, lineHeight: 1.5 }}>
-              Basado en HRV y ritmo cardíaco de los últimos 10 minutos.
+              Basado en <abbr title="Variabilidad de la frecuencia cardíaca" style={{ textDecoration: "none", borderBottom: "1px dotted rgba(255,255,255,0.3)", cursor: "help" }}>HRV</abbr> y ritmo cardíaco de los últimos 10 minutos.
               La pulsera se prende una luz cuando detecta un nivel de estrés elevado.
             </div>
           </Card>
@@ -614,11 +707,12 @@ export default function DashboardClient({ user, profile }) {
             stress={stress}
             bpm={avgBpm}
             bpmResting={CHILD_PROFILE.bpmResting}
+            hourlyData={hourlyData}
           />
         </div>
 
         {/* Fila 2: gráfico 24h */}
-        <Card style={{ padding: 28, marginBottom: 24 }}>
+        <Card style={{ padding: 28, marginBottom: 24, "--card-glow": `${state.hex}18` }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
             <div>
               <div style={{ fontSize: 12, letterSpacing: 1.4, textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 4 }}>Últimas 24 horas</div>
@@ -626,14 +720,23 @@ export default function DashboardClient({ user, profile }) {
             </div>
           </div>
           <StressChart stress={stress} hourlyData={hourlyData}/>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginTop: 24 }}>
-            <Stat label="Promedio hoy" value={`${Math.round(100 - stress * 0.95)}`} sub="nivel de calma" accent={state.hex}/>
+          <div className="dashboard-stats" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginTop: 24 }}>
+            <Stat
+              label="Promedio hoy"
+              value={`${Math.round(100 - stress * 0.95)}`}
+              sub={<span title="Índice estimado de calma basado en HRV" style={{ cursor: "help" }}>nivel de calma</span>}
+              accent={state.hex}
+            />
             <Stat
               label="Ritmo cardíaco"
               value={`${avgBpm}`}
-              sub="lpm promedio"
-              accent="#EC5B6B"
-              action="Actualizar pulsos base"
+              sub={
+                <span>
+                  <abbr title="Latidos por minuto" style={{ textDecoration: "none", borderBottom: "1px dotted rgba(255,255,255,0.3)", cursor: "help" }}>lpm</abbr> promedio
+                </span>
+              }
+              accent={SEMANTIC_COLORS.danger}
+              action="Guardar ritmo base"
               onAction={handleResetBaseBpm}
             />
             <Stat label="Sueño" value={sim.active ? sim.weekData[sim.currentDay]?.summary.sleepHours : "8h 20m"} sub="anoche"/>
@@ -641,8 +744,8 @@ export default function DashboardClient({ user, profile }) {
         </Card>
 
         {/* Fila 3: semana + actividad */}
-        <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 24, marginBottom: 24 }}>
-          <Card style={{ padding: 28 }}>
+        <div className="dashboard-week-activity" style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 24, marginBottom: 24 }}>
+          <Card style={{ padding: 28, "--card-glow": `${state.hex}18` }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
               <div>
                 <div style={{ fontSize: 12, letterSpacing: 1.4, textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 4 }}>Esta semana</div>
@@ -652,29 +755,31 @@ export default function DashboardClient({ user, profile }) {
             </div>
             <WeekBars stress={stress} weeklyOverride={simWeekly}/>
             <div style={{ marginTop: 18, padding: 14, borderRadius: 10, background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)", fontSize: 13, color: "var(--ink-dim)", lineHeight: 1.5 }}>
-              <strong style={{ color: "var(--ink)" }}>Observación:</strong> los martes muestran picos más altos, coinciden con clases de matemáticas.
+              <strong style={{ color: "var(--ink)" }}>Observación:</strong> se ve mayor variabilidad de estrés y ritmo cardíaco a mitad de semana, con una bajada progresiva y más calma hacia el fin de semana.
             </div>
           </Card>
 
-          <Card style={{ padding: 28 }}>
+          <Card style={{ padding: 28, "--card-glow": `${SEMANTIC_COLORS.brand}1A` }}>
             <div style={{ fontSize: 12, letterSpacing: 1.4, textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 4 }}>Actividad</div>
             <h3 style={{ margin: "0 0 18px", fontFamily: "Fraunces, serif", fontSize: 22, fontWeight: 500, letterSpacing: -0.3 }}>Hoy</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {(simEvents || TODAY_ACTIVITY).map((x, i) => {
+              {activityItems.map((x, i) => {
                 const iconMap = {
                   sun: <IconSun size={14}/>, activity: <IconActivity size={14}/>,
                   wind: <IconWind size={14}/>, heart: <IconHeart size={14}/>, gamepad: <IconGamepad size={14}/>,
                   book: <IconBook size={14}/>, music: <IconMusic size={14}/>
                 };
+                const accent = normalizeAccent(x.color);
+                const label = describeActivityTrend(activityItems, i);
                 return (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, animation: sim.active ? "heroTextIn 0.4s" : "none" }}>
                     <div style={{ fontSize: 12, color: "var(--ink-faint)", fontVariantNumeric: "tabular-nums", width: 44 }}>{x.time}</div>
                     <div style={{
                       width: 28, height: 28, borderRadius: 8,
-                      background: `${x.color}20`, border: `1px solid ${x.color}40`, color: x.color,
+                      background: `${accent}20`, border: `1px solid ${accent}40`, color: accent,
                       display: "flex", alignItems: "center", justifyContent: "center"
                     }}>{iconMap[x.icon] || <IconHeart size={14}/>}</div>
-                    <div style={{ fontSize: 13, color: "var(--ink-muted)", flex: 1 }}>{x.event}</div>
+                    <div style={{ fontSize: 13, color: "var(--ink-muted)", flex: 1 }}>{label}</div>
                   </div>
                 );
               })}
@@ -687,10 +792,10 @@ export default function DashboardClient({ user, profile }) {
 
         {/* Fila 4: Hub de navegación */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
-          <HubCard href="/kids"     icon={<IconHeart size={22}/>}    title={`Vista de ${CHILD_PROFILE.name}`} desc="Personaje animado, ejercicios de respiración y minijuegos." accent="#B8A4FF"/>
-          <HubCard href="/pairing"  icon={<IconWatch size={22}/>}    title="Conexión"  desc="Busca y vincula un dispositivo CalmBand." accent="#A8E6CF"/>
-          <HubCard href="/schedule" icon={<IconCalendar size={22}/>} title="Horario"   desc="Calendario diario de Simón con actividades del colegio." accent="#F5D06F"/>
-          <HubCard href="/history"  icon={<IconChart size={22}/>}    title="Historial" desc="Sesiones pasadas, tendencias y ejercicios completados." accent="#FFB4A2"/>
+          <HubCard href="/kids"     icon={<IconHeart size={22}/>}    title={`Vista de ${CHILD_PROFILE.name}`} desc="Personaje animado, ejercicios de respiración y minijuegos." accent={SEMANTIC_COLORS.brand}/>
+          <HubCard href="/pairing"  icon={<IconWatch size={22}/>}    title="Conexión"  desc="Busca y vincula un dispositivo CalmBand." accent={SEMANTIC_COLORS.calm}/>
+          <HubCard href="/schedule" icon={<IconCalendar size={22}/>} title="Horario"   desc="Calendario diario de Simón con actividades del colegio." accent={SEMANTIC_COLORS.attention}/>
+          <HubCard href="/history"  icon={<IconChart size={22}/>}    title="Historial" desc="Sesiones pasadas, tendencias y ejercicios completados." accent={SEMANTIC_COLORS.danger}/>
         </div>
       </main>
 
@@ -702,6 +807,11 @@ export default function DashboardClient({ user, profile }) {
         }
         @media (max-width: 768px) {
           .dashboard-row { grid-template-columns: 1fr !important; }
+          .dashboard-week-activity { grid-template-columns: 1fr !important; }
+        }
+        @media (max-width: 640px) {
+          .dashboard-main { padding: 16px 12px 60px !important; }
+          .dashboard-stats { grid-template-columns: 1fr !important; }
         }
       `}</style>
     </div>

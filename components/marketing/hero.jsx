@@ -218,7 +218,7 @@ const HeroGeometric = ({ onPrimary, onSecondary }) => {
             animation: "heroTextIn 0.9s 0.7s forwards"
           }}
         >
-          La pulsera inteligente que detecta el estres de tus hijos en tiempo real y les ensena a
+          La pulsera inteligente que detecta el estrés de tus hijos en tiempo real y les enseña a
           calmarse con ejercicios guiados por IA.
         </p>
 

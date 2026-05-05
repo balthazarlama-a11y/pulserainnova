@@ -4,7 +4,7 @@ export const GradientText = ({ children, className = "", style = {} }) => (
   <span
     className={className}
     style={{
-      background: "linear-gradient(92deg, #E9D6FF 0%, #B8A4FF 30%, #A8E6CF 65%, #FFB4A2 100%)",
+      background: "linear-gradient(92deg, var(--brand) 0%, var(--attention) 40%, var(--calm) 70%, var(--danger) 100%)",
       WebkitBackgroundClip: "text",
       WebkitTextFillColor: "transparent",
       backgroundClip: "text",
@@ -133,9 +133,10 @@ export const Card = ({ children, style = {}, hover = false, onClick, ...rest }) 
         borderRadius: 20,
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
-        transition: "transform 0.25s ease, border-color 0.25s ease",
+        transition: "transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease",
         transform: h ? "translateY(-2px)" : "none",
         borderColor: h ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.08)",
+        boxShadow: "0 0 0 1px rgba(255,255,255,0.02), 0 0 32px var(--card-glow, rgba(0,0,0,0))",
         cursor: onClick ? "pointer" : "default",
         ...style
       }}
@@ -175,10 +176,10 @@ export const stressState = (value) => {
     return { key: "calm", label: "Tranquilo", color: "var(--calm)", hex: "#5EDC9A", range: "0 - 30", mood: ":)" };
   }
   if (value <= 55) {
-    return { key: "mild", label: "Leve estres", color: "var(--mild)", hex: "#F5D06F", range: "31 - 55", mood: ":|" };
+    return { key: "mild", label: "Leve estrés", color: "var(--mild)", hex: "#F5D06F", range: "31 - 55", mood: ":|" };
   }
   if (value <= 75) {
-    return { key: "moderate", label: "Estres moderado", color: "var(--moderate)", hex: "#F59E4C", range: "56 - 75", mood: ":/" };
+    return { key: "moderate", label: "Estrés moderado", color: "var(--moderate)", hex: "#EC5B6B", range: "56 - 75", mood: ":/" };
   }
   return { key: "high", label: "Ansiedad alta", color: "var(--high)", hex: "#EC5B6B", range: "76 - 100", mood: ":(" };
 };
@@ -206,7 +207,7 @@ export const AmbientOrbs = ({ intense = false }) => (
         width: 700,
         height: 700,
         borderRadius: "50%",
-        background: "radial-gradient(circle, rgba(168,230,207,0.25), transparent 60%)",
+        background: "radial-gradient(circle, rgba(94,220,154,0.25), transparent 60%)",
         filter: "blur(40px)",
         opacity: intense ? 0.8 : 0.5
       }}
@@ -219,7 +220,7 @@ export const AmbientOrbs = ({ intense = false }) => (
         width: 400,
         height: 400,
         borderRadius: "50%",
-        background: "radial-gradient(circle, rgba(255,180,162,0.2), transparent 60%)",
+        background: "radial-gradient(circle, rgba(245,208,111,0.2), transparent 60%)",
         filter: "blur(40px)",
         opacity: intense ? 0.7 : 0.4
       }}

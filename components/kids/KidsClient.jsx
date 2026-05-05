@@ -3,19 +3,20 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { stressState, AmbientOrbs } from "@/components/marketing/primitives";
-import { IconWind, IconGamepad, IconMusic, IconBook, IconArrowLeft, IconX, IconArrowRight } from "@/components/marketing/icons";
+import { IconWind, IconGamepad, IconMusic, IconBook, IconArrowLeft, IconX, IconArrowRight, IconHeart, IconActivity } from "@/components/marketing/icons";
 import { CHILD_PROFILE, getCurrentStress, getStressKey } from "@/lib/mockData";
 import { useSimulation } from "@/lib/simulationContext";
+import { SEMANTIC_COLORS } from "@/lib/utils";
 
 // Friendly blob character — reacts to stress/mood
 const CalmChar = ({ mood = "calm", size = 220 }) => {
   const colors = {
-    calm:      { body: "#A8E6CF", cheek: "#FFB4A2", eye: "#1a3528" },
-    mild:      { body: "#F5D06F", cheek: "#FFB4A2", eye: "#2e2410" },
-    moderate:  { body: "#FFB4A2", cheek: "#F4A6C0", eye: "#2e120a" },
-    high:      { body: "#F4A6C0", cheek: "#B8A4FF", eye: "#2a0d1e" },
-    breathing: { body: "#B8A4FF", cheek: "#FFC9E5", eye: "#190a33" },
-  }[mood] || { body: "#A8E6CF", cheek: "#FFB4A2", eye: "#1a3528" };
+    calm:      { body: SEMANTIC_COLORS.calm,      cheek: SEMANTIC_COLORS.attention, eye: "#1a3528" },
+    mild:      { body: SEMANTIC_COLORS.attention, cheek: SEMANTIC_COLORS.brand,     eye: "#2e2410" },
+    moderate:  { body: SEMANTIC_COLORS.danger,    cheek: SEMANTIC_COLORS.attention, eye: "#2e120a" },
+    high:      { body: SEMANTIC_COLORS.danger,    cheek: SEMANTIC_COLORS.brand,     eye: "#2a0d1e" },
+    breathing: { body: SEMANTIC_COLORS.brand,     cheek: SEMANTIC_COLORS.attention, eye: "#190a33" },
+  }[mood] || { body: SEMANTIC_COLORS.calm, cheek: SEMANTIC_COLORS.attention, eye: "#1a3528" };
 
   const [blink, setBlink] = useState(false);
   useEffect(() => {
@@ -145,8 +146,8 @@ const BreathingExercise = ({ onClose }) => {
               Completaste {totalCycles} respiraciones. ¿Cómo te sientes ahora?
             </p>
             <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-              {["😌", "🙂", "😐", "😔"].map(e => (
-                <button key={e} onClick={onClose} style={{
+                    { ["😌", "🙂", "😐", "😔"].map(e => (
+                      <button key={e} onClick={() => { if (onComplete) onComplete(); onClose(); }} style={{
                   width: 64, height: 64, fontSize: 32, borderRadius: 20,
                   background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
                   cursor: "pointer", transition: "transform 0.2s"
@@ -157,7 +158,7 @@ const BreathingExercise = ({ onClose }) => {
         ) : (
           <>
             <div style={{ position: "relative", width: 320, height: 320, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 30px" }}>
-              {[0.95, 1.1, 1.25].map((s, i) => (
+              {[1.2, 1.5, 1.8].map((s, i) => (
                 <div key={i} style={{ position: "absolute", inset: 0, borderRadius: "50%", border: "1px solid rgba(184,164,255,0.15)", transform: `scale(${s})` }}/>
               ))}
               <div style={{
@@ -189,12 +190,13 @@ const BreathingExercise = ({ onClose }) => {
 };
 
 // Bubble pop mini-game
-const BubblePop = ({ onClose }) => {
+const BubblePop = ({ onClose, onComplete }) => {
   const [bubbles, setBubbles] = useState([]);
   const [score, setScore] = useState(0);
   const [time, setTime] = useState(30);
   const [done, setDone] = useState(false);
   const idRef = useRef(0);
+  const timeoutsRef = useRef([]);
 
   useEffect(() => {
     if (done) return;
@@ -203,16 +205,22 @@ const BubblePop = ({ onClose }) => {
         id: ++idRef.current,
         x: 10 + Math.random() * 80,
         size: 50 + Math.random() * 40,
-        color: ["#B8A4FF", "#A8E6CF", "#FFB4A2", "#F4A6C0"][Math.floor(Math.random() * 4)],
+        color: [SEMANTIC_COLORS.brand, SEMANTIC_COLORS.calm, SEMANTIC_COLORS.attention, SEMANTIC_COLORS.danger][Math.floor(Math.random() * 4)],
         dur: 5 + Math.random() * 3,
       };
       setBubbles(bs => [...bs, b]);
-      setTimeout(() => setBubbles(bs => bs.filter(x => x.id !== b.id)), b.dur * 1000);
+      const timeoutId = setTimeout(() => setBubbles(bs => bs.filter(x => x.id !== b.id)), b.dur * 1000);
+      timeoutsRef.current.push(timeoutId);
     }, 700);
     const timer = setInterval(() => {
       setTime(t => { if (t <= 1) { setDone(true); return 0; } return t - 1; });
     }, 1000);
-    return () => { clearInterval(spawn); clearInterval(timer); };
+    return () => {
+      clearInterval(spawn);
+      clearInterval(timer);
+      timeoutsRef.current.forEach(clearTimeout);
+      timeoutsRef.current = [];
+    };
   }, [done]);
 
   const pop = (id) => { setBubbles(bs => bs.filter(x => x.id !== id)); setScore(s => s + 10); };
@@ -238,7 +246,7 @@ const BubblePop = ({ onClose }) => {
           <p style={{ fontSize: 18, color: "rgba(255,255,255,0.7)", marginBottom: 24 }}>
             Lograste <strong style={{ color: "#B8A4FF" }}>{score} puntos</strong>
           </p>
-          <button onClick={onClose} style={{
+          <button onClick={() => { if (onComplete) onComplete(); onClose(); }} style={{
             display: "inline-flex", alignItems: "center", gap: 8, padding: "16px 26px", fontSize: 15, borderRadius: 14,
             background: "linear-gradient(180deg, #B8A4FF, #8B7FD8)", color: "#0D0824",
             boxShadow: "0 8px 24px -6px rgba(184,164,255,0.5)", border: "1px solid rgba(255,255,255,0.2)",
@@ -262,6 +270,414 @@ const BubblePop = ({ onClose }) => {
           <style>{`@keyframes bubbleRise { from { bottom: -100px; opacity: 0; } 10% { opacity: 1; } to { bottom: 110vh; opacity: 0; } }`}</style>
         </>
       )}
+    </div>
+  );
+};
+
+// Music rhythm mini-game
+const MusicFlow = ({ onClose, onComplete }) => {
+  const beatMs = 1000;
+  const targetHits = 10;
+  const [running, setRunning] = useState(true);
+  const [pulse, setPulse] = useState(false);
+  const [goodHits, setGoodHits] = useState(0);
+  const [combo, setCombo] = useState(0);
+  const [feedback, setFeedback] = useState("Sigue el ritmo suave");
+  const [done, setDone] = useState(false);
+  const lastBeatRef = useRef(Date.now());
+
+  useEffect(() => {
+    if (!running || done) return;
+    lastBeatRef.current = Date.now();
+    const id = setInterval(() => {
+      lastBeatRef.current = Date.now();
+      setPulse(p => !p);
+    }, beatMs);
+    return () => clearInterval(id);
+  }, [running, done]);
+
+  useEffect(() => {
+    if (goodHits >= targetHits) {
+      setDone(true);
+      setRunning(false);
+    }
+  }, [goodHits]);
+
+  const handleTap = () => {
+    if (done) return;
+    const diff = Math.abs(Date.now() - lastBeatRef.current);
+    if (diff <= 160) {
+      setGoodHits(h => h + 1);
+      setCombo(c => c + 1);
+      setFeedback("Perfecto");
+    } else if (diff <= 320) {
+      setGoodHits(h => h + 1);
+      setCombo(c => c + 1);
+      setFeedback("Bien");
+    } else {
+      setCombo(0);
+      setFeedback("Más lento");
+    }
+  };
+
+  const progress = Math.min(100, Math.round((goodHits / targetHits) * 100));
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 100,
+      background: "linear-gradient(180deg, #23103a 0%, #0b081d 100%)",
+      display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden"
+    }}>
+      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 40%, rgba(245,208,111,0.18), transparent 60%)" }}/>
+      <button onClick={onClose} style={{
+        position: "absolute", top: 20, right: 20, zIndex: 2,
+        width: 40, height: 40, borderRadius: 20,
+        background: "rgba(255,255,255,0.08)", border: "none",
+        color: "#fff", cursor: "pointer",
+        display: "flex", alignItems: "center", justifyContent: "center"
+      }}><IconX size={18}/></button>
+
+      <div style={{ textAlign: "center", position: "relative", zIndex: 1 }}>
+        {done ? (
+          <div style={{ animation: "heroTextIn 0.6s" }}>
+            <div style={{ fontSize: 80, marginBottom: 12 }}>🎵</div>
+            <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 42, fontWeight: 500, margin: "0 0 8px", color: "#fff" }}>
+              ¡Ritmo calmado!
+            </h2>
+            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.7)", marginBottom: 24 }}>
+              Lograste {goodHits} aciertos siguiendo el pulso.
+            </p>
+            <button onClick={() => { if (onComplete) onComplete(); onClose(); }} style={{
+              display: "inline-flex", alignItems: "center", gap: 8, padding: "16px 26px", fontSize: 15, borderRadius: 14,
+              background: "linear-gradient(180deg, #F5D06F, #B8A4FF)", color: "#2A0E16",
+              boxShadow: "0 8px 24px -6px rgba(245,208,111,0.5)", border: "1px solid rgba(255,255,255,0.2)",
+              fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif"
+            }}>Volver <IconArrowRight size={14}/></button>
+          </div>
+        ) : (
+          <>
+            <div style={{ position: "relative", width: 280, height: 280, margin: "0 auto 22px" }}>
+              <div style={{
+                position: "absolute", inset: 0, borderRadius: "50%",
+                border: "1px solid rgba(255,255,255,0.1)",
+                animation: "musicWave 2.4s ease-in-out infinite"
+              }}/>
+              <button onClick={handleTap} style={{
+                position: "absolute", inset: 16, borderRadius: "50%",
+                background: "radial-gradient(circle at 35% 30%, rgba(255,255,255,0.5), rgba(245,208,111,0.95) 45%, rgba(184,164,255,0.8) 100%)",
+                border: "none", cursor: "pointer",
+                transform: pulse ? "scale(1)" : "scale(0.93)",
+                transition: "transform 0.45s ease",
+                boxShadow: "0 0 60px rgba(245,208,111,0.35), inset 0 0 30px rgba(255,255,255,0.2)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontFamily: "Fraunces, serif", fontSize: 22, color: "#2A0E16"
+              }}>
+                Toca
+              </button>
+            </div>
+            <div style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", marginBottom: 6 }}>
+              {feedback} · combo {combo}
+            </div>
+            <div style={{ width: 220, height: 8, borderRadius: 999, background: "rgba(255,255,255,0.12)", margin: "0 auto 14px" }}>
+              <div style={{ width: `${progress}%`, height: "100%", borderRadius: 999, background: "linear-gradient(90deg, #F5D06F, #B8A4FF)", transition: "width 0.3s" }}/>
+            </div>
+            <button onClick={() => setRunning(r => !r)} style={{
+              padding: "8px 16px", borderRadius: 10, fontSize: 12, fontWeight: 600,
+              background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.18)",
+              color: "#fff", cursor: "pointer", fontFamily: "Inter, sans-serif"
+            }}>{running ? "Pausar" : "Continuar"}</button>
+          </>
+        )}
+      </div>
+      <style>{`@keyframes musicWave { 0%,100% { transform: scale(0.96); opacity: 0.4; } 50% { transform: scale(1.04); opacity: 0.8; } }`}</style>
+    </div>
+  );
+};
+
+// Story mini-game
+const StoryFlow = ({ onClose, onComplete }) => {
+  const steps = [
+    {
+      title: "Bosque tranquilo",
+      text: "Imagina un camino suave entre árboles. Cada paso te hace sentir más ligero.",
+    },
+    {
+      title: "Respira",
+      text: "Inhala contando 4, exhala contando 6. Hazlo tres veces.",
+    },
+    {
+      title: "Palabra calma",
+      text: "Elige una palabra que te haga sentir seguro.",
+      options: ["Luz", "Paz", "Suave", "Valiente"],
+    },
+    {
+      title: "Cierre",
+      text: "Guarda esa palabra en tu bolsillo. Puedes volver a ella cuando quieras.",
+    },
+  ];
+
+  const [index, setIndex] = useState(0);
+  const [word, setWord] = useState(null);
+
+  useEffect(() => {
+    if (steps[index].options) setWord(null);
+  }, [index]);
+
+  const step = steps[index];
+  const isLast = index === steps.length - 1;
+  const canNext = !step.options || word;
+  const chosenWord = word || "";
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 100,
+      background: "linear-gradient(180deg, #1b0f2e 0%, #0a081a 100%)",
+      display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden"
+    }}>
+      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 30%, rgba(245,208,111,0.15), transparent 60%)" }}/>
+      <button onClick={onClose} style={{
+        position: "absolute", top: 20, right: 20, zIndex: 2,
+        width: 40, height: 40, borderRadius: 20,
+        background: "rgba(255,255,255,0.08)", border: "none",
+        color: "#fff", cursor: "pointer",
+        display: "flex", alignItems: "center", justifyContent: "center"
+      }}><IconX size={18}/></button>
+
+      <div style={{ textAlign: "center", position: "relative", zIndex: 1, maxWidth: 520, padding: "0 20px" }}>
+        <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: 20 }}>
+          {steps.map((_, i) => (
+            <div key={i} style={{
+              width: 26, height: 4, borderRadius: 99,
+              background: i <= index ? "#F4A6C0" : "rgba(255,255,255,0.12)",
+              transition: "background 0.3s"
+            }}/>
+          ))}
+        </div>
+        <div style={{ fontSize: 40, marginBottom: 8 }}>📖</div>
+        <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 36, fontWeight: 500, margin: "0 0 10px", color: "#fff" }}>
+          {step.title}
+        </h2>
+        <p style={{ color: "rgba(255,255,255,0.75)", fontSize: 16, marginBottom: 20, lineHeight: 1.6 }}>
+          {step.text} {index === 3 && chosenWord ? `Tu palabra es "${chosenWord}".` : ""}
+        </p>
+
+        {step.options && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", marginBottom: 18 }}>
+            {step.options.map(opt => (
+              <button key={opt} onClick={() => setWord(opt)} style={{
+                padding: "10px 16px", borderRadius: 999,
+                background: opt === word ? "#F5D06F" : "rgba(255,255,255,0.08)",
+                border: opt === word ? "1px solid #F5D06F" : "1px solid rgba(255,255,255,0.18)",
+                color: opt === word ? "#2A0E16" : "#fff",
+                fontSize: 13, fontWeight: 600, cursor: "pointer",
+                fontFamily: "Inter, sans-serif"
+              }}>{opt}</button>
+            ))}
+          </div>
+        )}
+
+        <button onClick={() => {
+          if (!canNext) return;
+          if (isLast) {
+            if (onComplete) onComplete();
+            onClose();
+          } else {
+            setIndex(i => i + 1);
+          }
+        }} disabled={!canNext} style={{
+          padding: "14px 22px", borderRadius: 12, fontSize: 14, fontWeight: 600,
+          background: canNext ? "linear-gradient(180deg, #F5D06F, #B8A4FF)" : "rgba(255,255,255,0.1)",
+          border: "1px solid rgba(255,255,255,0.2)", color: "#2A0E16",
+          cursor: canNext ? "pointer" : "not-allowed", fontFamily: "Inter, sans-serif"
+        }}>{isLast ? "Terminar" : "Siguiente"}</button>
+      </div>
+    </div>
+  );
+};
+
+// Constellation mini-game
+const ConstellationGame = ({ onClose, onComplete }) => {
+  const stars = [
+    { x: 18, y: 30 },
+    { x: 38, y: 18 },
+    { x: 64, y: 26 },
+    { x: 72, y: 54 },
+    { x: 50, y: 72 },
+    { x: 24, y: 60 },
+  ];
+  const [nextIndex, setNextIndex] = useState(0);
+  const [mistake, setMistake] = useState(false);
+  const done = nextIndex >= stars.length;
+  const mistakeTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (mistakeTimeoutRef.current) clearTimeout(mistakeTimeoutRef.current);
+    };
+  }, []);
+
+  const handleStar = (i) => {
+    if (done) return;
+    if (i === nextIndex) {
+      setNextIndex(i + 1);
+    } else {
+      setMistake(true);
+      if (mistakeTimeoutRef.current) clearTimeout(mistakeTimeoutRef.current);
+      mistakeTimeoutRef.current = setTimeout(() => setMistake(false), 600);
+    }
+  };
+
+  const visited = stars.slice(0, nextIndex);
+  const points = visited.map(s => `${s.x},${s.y}`).join(" ");
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 100,
+      background: "linear-gradient(180deg, #101a3a 0%, #070916 100%)",
+      display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden"
+    }}>
+      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 30%, rgba(94,220,154,0.18), transparent 60%)" }}/>
+      <button onClick={onClose} style={{
+        position: "absolute", top: 20, right: 20, zIndex: 2,
+        width: 40, height: 40, borderRadius: 20,
+        background: "rgba(255,255,255,0.08)", border: "none",
+        color: "#fff", cursor: "pointer",
+        display: "flex", alignItems: "center", justifyContent: "center"
+      }}><IconX size={18}/></button>
+
+      <div style={{ textAlign: "center", position: "relative", zIndex: 1 }}>
+        {done ? (
+          <div style={{ animation: "heroTextIn 0.6s" }}>
+            <div style={{ fontSize: 80, marginBottom: 12 }}>✨</div>
+            <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 40, fontWeight: 500, margin: "0 0 8px", color: "#fff" }}>
+              ¡Constelación completa!
+            </h2>
+            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.7)", marginBottom: 24 }}>
+              Cada estrella es un pensamiento tranquilo.
+            </p>
+            <button onClick={() => { if (onComplete) onComplete(); onClose(); }} style={{
+              display: "inline-flex", alignItems: "center", gap: 8, padding: "16px 26px", fontSize: 15, borderRadius: 14,
+              background: "linear-gradient(180deg, #5EDC9A, #A8E6CF)", color: "#0D0824",
+              boxShadow: "0 8px 24px -6px rgba(94,220,154,0.5)", border: "1px solid rgba(255,255,255,0.2)",
+              fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif"
+            }}>Volver <IconArrowRight size={14}/></button>
+          </div>
+        ) : (
+          <>
+            <div style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", marginBottom: 10 }}>
+              {mistake ? "Busca la siguiente estrella en orden" : "Toca las estrellas en orden"}
+            </div>
+            <div style={{ position: "relative", width: 320, height: 320, margin: "0 auto 16px", borderRadius: 24, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <svg viewBox="0 0 100 100" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
+                {visited.length > 1 && (
+                  <polyline points={points} fill="none" stroke="rgba(94,220,154,0.6)" strokeWidth="1.5" />
+                )}
+              </svg>
+              {stars.map((s, i) => {
+                const active = i < nextIndex;
+                return (
+                  <button key={i} onClick={() => handleStar(i)} style={{
+                    position: "absolute", left: `${s.x}%`, top: `${s.y}%`, transform: "translate(-50%, -50%)",
+                    width: active ? 30 : 26, height: active ? 30 : 26, borderRadius: "50%",
+                    background: active ? "#5EDC9A" : "rgba(255,255,255,0.14)",
+                    border: active ? "1px solid #5EDC9A" : "1px solid rgba(255,255,255,0.3)",
+                    color: active ? "#0D0824" : "#fff",
+                    fontSize: 12, fontWeight: 700, cursor: "pointer",
+                    boxShadow: active ? "0 0 12px rgba(94,220,154,0.6)" : "none",
+                    animation: !active ? "twinkle 2.2s ease-in-out infinite" : "none"
+                  }}>{i + 1}</button>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
+              Progreso: {nextIndex}/{stars.length}
+            </div>
+          </>
+        )}
+      </div>
+      <style>{`@keyframes twinkle { 0%,100% { opacity: 0.6; transform: translate(-50%, -50%) scale(0.9); } 50% { opacity: 1; transform: translate(-50%, -50%) scale(1); } }`}</style>
+    </div>
+  );
+};
+
+// Zen garden mini-game
+const ZenGarden = ({ onClose, onComplete }) => {
+  const maxStones = 8;
+  const [stones, setStones] = useState([]);
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    if (stones.length >= maxStones) setDone(true);
+  }, [stones.length]);
+
+  const placeStone = () => {
+    if (done) return;
+    setStones(prev => {
+      if (prev.length >= maxStones) return prev;
+      const size = 12 + Math.random() * 10;
+      const x = 20 + Math.random() * 60;
+      const y = 22 + Math.random() * 56;
+      return [...prev, { x, y, size }];
+    });
+  };
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 100,
+      background: "linear-gradient(180deg, #0f1c22 0%, #050a0d 100%)",
+      display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden"
+    }}>
+      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 35%, rgba(94,220,154,0.2), transparent 60%)" }}/>
+      <button onClick={onClose} style={{
+        position: "absolute", top: 20, right: 20, zIndex: 2,
+        width: 40, height: 40, borderRadius: 20,
+        background: "rgba(255,255,255,0.08)", border: "none",
+        color: "#fff", cursor: "pointer",
+        display: "flex", alignItems: "center", justifyContent: "center"
+      }}><IconX size={18}/></button>
+
+      <div style={{ textAlign: "center", position: "relative", zIndex: 1 }}>
+        {done ? (
+          <div style={{ animation: "heroTextIn 0.6s" }}>
+            <div style={{ fontSize: 80, marginBottom: 12 }}>🪨</div>
+            <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 40, fontWeight: 500, margin: "0 0 8px", color: "#fff" }}>
+              Jardín en calma
+            </h2>
+            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.7)", marginBottom: 24 }}>
+              Colocaste todas las piedras con calma.
+            </p>
+            <button onClick={() => { if (onComplete) onComplete(); onClose(); }} style={{
+              display: "inline-flex", alignItems: "center", gap: 8, padding: "16px 26px", fontSize: 15, borderRadius: 14,
+              background: "linear-gradient(180deg, #5EDC9A, #A8E6CF)", color: "#0D0824",
+              boxShadow: "0 8px 24px -6px rgba(94,220,154,0.5)", border: "1px solid rgba(255,255,255,0.2)",
+              fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif"
+            }}>Volver <IconArrowRight size={14}/></button>
+          </div>
+        ) : (
+          <>
+            <div style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", marginBottom: 10 }}>
+              Toca el estanque y coloca piedras lentamente
+            </div>
+            <div onClick={placeStone} style={{
+              position: "relative", width: 320, height: 320, margin: "0 auto 16px", borderRadius: "50%",
+              background: "radial-gradient(circle at 40% 35%, rgba(94,220,154,0.25), rgba(10,20,24,0.9) 60%, rgba(5,8,10,0.95) 100%)",
+              border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer"
+            }}>
+              {stones.map((s, i) => (
+                <div key={i} style={{
+                  position: "absolute", left: `${s.x}%`, top: `${s.y}%`, transform: "translate(-50%, -50%)",
+                  width: s.size, height: s.size, borderRadius: "50%",
+                  background: "linear-gradient(135deg, #9aa2a8, #5f6a70)",
+                  boxShadow: "0 6px 12px rgba(0,0,0,0.35)"
+                }}/>
+              ))}
+            </div>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
+              {stones.length}/{maxStones} piedras
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 };
@@ -301,8 +717,28 @@ export default function KidsClient() {
   const sim = useSimulation();
   const [baseStress, setBaseStress] = useState(35);
   const [activity, setActivity] = useState(null);
+  const [earned, setEarned] = useState({
+    breath: 0,
+    bubble: 0,
+    music: 0,
+    story: 0,
+    constellation: 0,
+    garden: 0,
+  });
+  const [celebrate, setCelebrate] = useState(false);
+  const [lastBadge, setLastBadge] = useState(null);
 
   useEffect(() => { setBaseStress(getCurrentStress()); }, []);
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const isImmersive = Boolean(activity);
+    document.body.classList.toggle("immersive-mode", isImmersive);
+    window.dispatchEvent(new CustomEvent("immersive-mode-change", { detail: isImmersive }));
+    return () => {
+      document.body.classList.remove("immersive-mode");
+      window.dispatchEvent(new CustomEvent("immersive-mode-change", { detail: false }));
+    };
+  }, [activity]);
 
   const simData = sim.active ? sim.getCurrentSimData() : null;
   const stress = sim.active ? simData.stress : baseStress;
@@ -312,6 +748,62 @@ export default function KidsClient() {
   const greeting = stress <= 30 ? "¡Qué bien te ves hoy!" :
                    stress <= 55 ? `¿Cómo vas, ${CHILD_PROFILE.name}?` :
                    stress <= 75 ? "¿Necesitas un momento?" : "Estoy aquí contigo";
+
+  const handleActivityClose = () => setActivity(null);
+  const handleActivityComplete = (key) => {
+    setEarned((prev) => ({ ...prev, [key]: (prev[key] || 0) + 1 }));
+    setLastBadge(key);
+    setCelebrate(true);
+    setTimeout(() => setCelebrate(false), 1600);
+    setActivity(null);
+  };
+
+  const activityCards = [
+    {
+      key: "breath",
+      title: "Respirar",
+      sub: "3 min · contigo",
+      icon: <IconWind size={28}/>,
+      accent: "#B8A4FF",
+      recommended: stress > 55,
+    },
+    {
+      key: "bubble",
+      title: "Burbujas",
+      sub: "30 s · divertido",
+      icon: <IconGamepad size={28}/>,
+      accent: SEMANTIC_COLORS.calm,
+      recommended: stress > 40 && stress <= 70,
+    },
+    {
+      key: "music",
+      title: "Música",
+      sub: "2 min · ritmo suave",
+      icon: <IconMusic size={28}/>,
+      accent: SEMANTIC_COLORS.attention,
+    },
+    {
+      key: "story",
+      title: "Historia",
+      sub: "4 pasos · calma",
+      icon: <IconBook size={28}/>,
+      accent: SEMANTIC_COLORS.brand,
+    },
+    {
+      key: "constellation",
+      title: "Constelación",
+      sub: "1 min · foco",
+      icon: <IconActivity size={28}/>,
+      accent: SEMANTIC_COLORS.attention,
+    },
+    {
+      key: "garden",
+      title: "Jardín zen",
+      sub: "2 min · lento",
+      icon: <IconHeart size={28}/>,
+      accent: SEMANTIC_COLORS.calm,
+    },
+  ];
 
   return (
     <div style={{
@@ -370,38 +862,93 @@ export default function KidsClient() {
           {greeting}
         </h1>
         <p style={{ color: "var(--ink-dim)", fontSize: 16, maxWidth: 480, margin: "0 auto 40px", lineHeight: 1.55 }}>
-          {stress <= 30 && "Tu pulsera dice que estás muy tranquila. ¡Sigue así!"}
-          {stress > 30 && stress <= 55 && "Noto que estás un poquito inquieta. ¿Quieres calmarte conmigo?"}
+          {stress <= 30 && "Tu pulsera dice que estás muy tranquilo. ¡Sigue así!"}
+          {stress > 30 && stress <= 55 && "Noto que estás un poquito inquieto. ¿Quieres calmarte conmigo?"}
           {stress > 55 && stress <= 75 && "Parece que algo te preocupa. Elige una actividad y respiremos juntos."}
           {stress > 75 && "Vamos paso a paso. Estás a salvo. Elige algo que te ayude ahora."}
         </p>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, maxWidth: 760, margin: "0 auto" }}>
-          <ActivityCard accent="#B8A4FF" icon={<IconWind size={28}/>} title="Respirar" sub="3 min · contigo" recommended={stress > 55} onClick={() => setActivity("breath")}/>
-          <ActivityCard accent="#A8E6CF" icon={<IconGamepad size={28}/>} title="Burbujas" sub="30 s · divertido" recommended={stress > 40 && stress <= 70} onClick={() => setActivity("bubble")}/>
-          <ActivityCard accent="#FFB4A2" icon={<IconMusic size={28}/>} title="Música" sub="10 min · relax" onClick={() => {}}/>
-          <ActivityCard accent="#F4A6C0" icon={<IconBook size={28}/>} title="Historia" sub="5 min · calmante" onClick={() => {}}/>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, maxWidth: 820, margin: "0 auto" }}>
+          {activityCards.map(card => (
+            <ActivityCard
+              key={card.key}
+              accent={card.accent}
+              icon={card.icon}
+              title={card.title}
+              sub={card.sub}
+              recommended={card.recommended}
+              onClick={() => setActivity(card.key)}
+            />
+          ))}
         </div>
 
-        {/* Streak */}
-        <div style={{ marginTop: 40, display: "inline-flex", alignItems: "center", gap: 16, padding: "14px 22px", borderRadius: 999, background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)" }}>
-          <div style={{ display: "flex", gap: 4 }}>
-            {[1,2,3,4,5,6,7].map(d => (
-              <div key={d} style={{
-                width: 10, height: 10, borderRadius: 5,
-                background: d <= CHILD_PROFILE.streakDays ? "#F5D06F" : "rgba(255,255,255,0.1)",
-                boxShadow: d <= CHILD_PROFILE.streakDays ? "0 0 6px #F5D06F88" : "none"
-              }}/>
-            ))}
+        {/* Logros */}
+        <div style={{ marginTop: 40, padding: "18px 20px", borderRadius: 20, background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)" }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 12, padding: "10px 16px", borderRadius: 999, background: "rgba(255,255,255,0.03)", border: "1px solid var(--border)", marginBottom: 20 }}>
+            <div style={{ display: "flex", gap: 4 }}>
+              {[1,2,3,4,5,6,7].map(d => (
+                <div key={d} style={{
+                  width: 10, height: 10, borderRadius: 5,
+                  background: d <= CHILD_PROFILE.streakDays ? SEMANTIC_COLORS.attention : "rgba(255,255,255,0.1)",
+                  boxShadow: d <= CHILD_PROFILE.streakDays ? `0 0 6px ${SEMANTIC_COLORS.attention}88` : "none"
+                }}/>
+              ))}
+            </div>
+            <div style={{ fontSize: 13, color: "var(--ink-muted)" }}>
+              <strong style={{ color: SEMANTIC_COLORS.attention }}>{CHILD_PROFILE.streakDays} días</strong> de racha
+            </div>
           </div>
-          <div style={{ fontSize: 13, color: "var(--ink-muted)" }}>
-            <strong style={{ color: "#F5D06F" }}>{CHILD_PROFILE.streakDays} días</strong> cuidándote 🌟
+
+          <div style={{ fontSize: 12, letterSpacing: 2, textTransform: "uppercase", color: "var(--ink-faint)", marginBottom: 12 }}>
+            Medallas
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 16 }}>
+            {[
+              { key: "breath", label: "Respiración completada", icon: "🌬️", color: SEMANTIC_COLORS.brand, active: earned.breath > 0 },
+              { key: "streak_3", label: "3 días seguidos", icon: "🔥", color: SEMANTIC_COLORS.attention, active: CHILD_PROFILE.streakDays >= 3 },
+              { key: "first_game", label: "Primer juego", icon: "🌟", color: SEMANTIC_COLORS.calm, active: Object.values(earned).some(v => v > 0) },
+            ].map((medal) => (
+              <div key={medal.key} style={{
+                padding: "12px 14px", borderRadius: 14,
+                background: medal.active ? `${medal.color}14` : "rgba(255,255,255,0.02)",
+                border: medal.active ? `1px solid ${medal.color}35` : "1px solid rgba(255,255,255,0.05)",
+                display: "flex", alignItems: "center", gap: 10,
+                opacity: medal.active ? 1 : 0.5,
+                filter: medal.active ? "none" : "grayscale(1)"
+              }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 12,
+                  background: medal.active ? `${medal.color}33` : "rgba(255,255,255,0.1)", color: medal.color,
+                  display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18
+                }}>{medal.icon}</div>
+                <div style={{ textAlign: "left" }}>
+                  <div style={{ fontSize: 13, fontWeight: medal.active ? 600 : 400, color: medal.active ? medal.color : "var(--ink-faint)" }}>
+                    {medal.label}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </main>
 
-      {activity === "breath" && <BreathingExercise onClose={() => setActivity(null)}/>}
-      {activity === "bubble" && <BubblePop onClose={() => setActivity(null)}/>}
+      {celebrate && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 9999, pointerEvents: "none",
+          background: "radial-gradient(circle at 50% 50%, rgba(184,164,255,0.3), transparent 60%)",
+          animation: "celebrationPulse 1.5s ease-out forwards"
+        }}>
+          <style>{`@keyframes celebrationPulse { 0% { opacity: 0; transform: scale(0.9); } 20% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0; transform: scale(1.5); } }`}</style>
+        </div>
+      )}
+
+      {activity === "breath" && <BreathingExercise onClose={() => setActivity(null)} onComplete={() => handleActivityComplete("breath")} />}
+      {activity === "bubble" && <BubblePop onClose={() => setActivity(null)} onComplete={() => handleActivityComplete("bubble")} />}
+      {activity === "music" && <MusicFlow onClose={() => setActivity(null)} onComplete={() => handleActivityComplete("music")} />}
+      {activity === "story" && <StoryFlow onClose={() => setActivity(null)} onComplete={() => handleActivityComplete("story")} />}
+      {activity === "constellation" && <ConstellationGame onClose={() => setActivity(null)} onComplete={() => handleActivityComplete("constellation")} />}
+      {activity === "garden" && <ZenGarden onClose={() => setActivity(null)} onComplete={() => handleActivityComplete("garden")} />}
     </div>
   );
 }

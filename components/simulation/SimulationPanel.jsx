@@ -4,6 +4,7 @@ import { useRef, useCallback } from "react";
 import { useSimulation } from "@/lib/simulationContext";
 import { stressState } from "@/components/marketing/primitives";
 import { IconX } from "@/components/marketing/icons";
+import { normalizeAccent, SEMANTIC_COLORS } from "@/lib/utils";
 
 const SPEEDS = [1, 2, 5, 10];
 
@@ -165,24 +166,27 @@ export default function SimulationPanel() {
               transition: "width 0.3s linear",
             }} />
             {/* Event markers */}
-            {dayData.events.map((evt, i) => (
-              <div
-                key={i}
-                title={`${evt.time} — ${evt.event}`}
-                style={{
-                  position: "absolute",
-                  left: `${(evt.hour / 23) * 100}%`,
-                  top: -2,
-                  width: 4,
-                  height: 12,
-                  borderRadius: 2,
-                  background: evt.color,
-                  opacity: currentTimeDecimal >= evt.hour ? 1 : 0.3,
-                  transform: "translateX(-2px)",
-                  transition: "opacity 0.3s",
-                }}
-              />
-            ))}
+            {dayData.events.map((evt, i) => {
+              const markerColor = normalizeAccent(evt.color);
+              return (
+                <div
+                  key={i}
+                  title={`${evt.time} — ${evt.event}`}
+                  style={{
+                    position: "absolute",
+                    left: `${(evt.hour / 23) * 100}%`,
+                    top: -2,
+                    width: 4,
+                    height: 12,
+                    borderRadius: 2,
+                    background: markerColor,
+                    opacity: currentTimeDecimal >= evt.hour ? 1 : 0.3,
+                    transform: "translateX(-2px)",
+                    transition: "opacity 0.3s",
+                  }}
+                />
+              );
+            })}
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
             <span style={{ fontSize: 11, color: "var(--ink-faint)" }}>06:00</span>
@@ -203,14 +207,14 @@ export default function SimulationPanel() {
             <div style={{ fontSize: 28, fontWeight: 700, color: state.hex, lineHeight: 1, fontVariantNumeric: "tabular-nums", transition: "color 0.4s" }}>
               {simData.stress}
             </div>
-            <div style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 4 }}>ansiedad</div>
+            <div style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 4 }}>estrés</div>
           </div>
           <div style={{
             padding: 14, borderRadius: 12,
-            background: "rgba(236,91,107,0.08)", border: "1px solid rgba(236,91,107,0.2)",
+            background: `${SEMANTIC_COLORS.brand}18`, border: `1px solid ${SEMANTIC_COLORS.brand}35`,
             textAlign: "center",
           }}>
-            <div style={{ fontSize: 28, fontWeight: 700, color: "#EC5B6B", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+            <div style={{ fontSize: 28, fontWeight: 700, color: SEMANTIC_COLORS.brand, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
               {simData.bpm}
             </div>
             <div style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 4 }}>lpm</div>
@@ -239,8 +243,8 @@ export default function SimulationPanel() {
               <>
                 <div style={{
                   width: 8, height: 8, borderRadius: 4,
-                  background: latestEvent.color,
-                  boxShadow: `0 0 8px ${latestEvent.color}`,
+                  background: normalizeAccent(latestEvent.color),
+                  boxShadow: `0 0 8px ${normalizeAccent(latestEvent.color)}`,
                   animation: "simPulseSmall 1.5s ease-in-out infinite",
                 }} />
                 <span><strong style={{ color: "var(--ink)" }}>Ahora:</strong> {latestEvent.event}</span>
