@@ -42,12 +42,14 @@
   --surface-elevated: rgba(255, 255, 255, 0.06);
   --surface-strong: rgba(255, 255, 255, 0.10);
 
-  /* Texto */
+  /* Texto — escalonado pero siempre por encima de WCAG AA sobre var(--bg).
+     Valores anteriores (0.72/0.56/0.36) daban ratios ~9/5.8/3, el faint quedaba
+     bajo AA. Subimos para garantizar legibilidad sin perder jerarquía. */
   --ink-rgb: 247 244 255;
   --ink: rgb(var(--ink-rgb));
-  --ink-muted: rgb(var(--ink-rgb) / 0.72);
-  --ink-dim: rgb(var(--ink-rgb) / 0.56);
-  --ink-faint: rgb(var(--ink-rgb) / 0.36);
+  --ink-muted: rgb(var(--ink-rgb) / 0.88);
+  --ink-dim: rgb(var(--ink-rgb) / 0.74);
+  --ink-faint: rgb(var(--ink-rgb) / 0.58);
   --ink-on-accent: #0D0824;      /* texto sobre botones brand */
 
   /* Bordes */
@@ -93,9 +95,9 @@
   /* Texto */
   --ink-rgb: 26 26 46;
   --ink: rgb(var(--ink-rgb));
-  --ink-muted: rgb(var(--ink-rgb) / 0.76);
-  --ink-dim: rgb(var(--ink-rgb) / 0.58);
-  --ink-faint: rgb(var(--ink-rgb) / 0.38);
+  --ink-muted: rgb(var(--ink-rgb) / 0.9);
+  --ink-dim: rgb(var(--ink-rgb) / 0.76);
+  --ink-faint: rgb(var(--ink-rgb) / 0.6);
   --ink-on-accent: #FFFFFF;
 
   /* Bordes */
