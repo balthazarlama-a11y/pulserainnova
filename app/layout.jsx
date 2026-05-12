@@ -8,12 +8,14 @@ export const metadata = {
 };
 
 // Setea data-theme antes de hidratar para evitar flash de tema incorrecto.
-// Lee localStorage; si no hay, cae a prefers-color-scheme.
+// Por qué solo localStorage (sin prefers-color-scheme): la landing, hero y
+// dashboard tienen fondos oscuros hardcodeados (#0A0A1A, #1a0f35). Si el OS
+// del usuario está en light y caemos a tema light, --ink pasa a ser oscuro
+// y el texto queda invisible sobre esos fondos. Light es opt-in desde Ajustes.
 const themeBootstrap = `
 (function(){try{
   var s=localStorage.getItem('calmband-theme');
-  var t=s||(window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');
-  document.documentElement.setAttribute('data-theme',t);
+  document.documentElement.setAttribute('data-theme', s==='light' ? 'light' : 'dark');
 }catch(e){}})();
 `;
 
