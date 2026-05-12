@@ -7,10 +7,21 @@ export const metadata = {
   description: "Wellness-focused wearable for kids, simulation mode."
 };
 
+// Setea data-theme antes de hidratar para evitar flash de tema incorrecto.
+// Lee localStorage; si no hay, cae a prefers-color-scheme.
+const themeBootstrap = `
+(function(){try{
+  var s=localStorage.getItem('calmband-theme');
+  var t=s||(window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');
+  document.documentElement.setAttribute('data-theme',t);
+}catch(e){}})();
+`;
+
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-[var(--bg-2)] text-[var(--ink)]">
+    <html lang="en" data-theme="dark" suppressHydrationWarning>
+      <body className="min-h-screen bg-bg text-ink">
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrap }}/>
         <AuthProvider>
           <ClientProviders>{children}</ClientProviders>
         </AuthProvider>

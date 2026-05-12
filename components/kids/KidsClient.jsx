@@ -80,7 +80,7 @@ const CalmChar = ({ mood = "calm", size = 220 }) => {
 };
 
 // Breathing exercise overlay
-const BreathingExercise = ({ onClose }) => {
+const BreathingExercise = ({ onClose, onComplete }) => {
   const [running, setRunning] = useState(true);
   const [cycle, setCycle] = useState(0);
   const [phase, setPhase] = useState("inhale");

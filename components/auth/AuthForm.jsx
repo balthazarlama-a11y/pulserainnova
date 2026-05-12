@@ -70,7 +70,6 @@ export default function AuthForm({ mode }) {
 
     try {
       if (isSignUp) {
-        console.log("Starting signup...");
         const origin = typeof window !== "undefined" ? window.location.origin : "";
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
@@ -83,8 +82,6 @@ export default function AuthForm({ mode }) {
           }
         });
 
-        console.log("Signup response:", { data, error: signUpError });
-
         if (signUpError) {
           setError(signUpError.message);
           setLoading(false);
@@ -92,34 +89,28 @@ export default function AuthForm({ mode }) {
         }
 
         if (data?.session && data.user) {
-          console.log("Signup succeeded, creating profile...");
-          const { error: profileError } = await supabase.from("profiles").upsert({
+          await supabase.from("profiles").upsert({
             id: data.user.id,
             email,
             display_name: displayName || null,
             updated_at: new Date().toISOString()
           });
-          console.log("Profile upsert response:", profileError);
 
           finishRedirect("/dashboard");
           return;
         }
 
-        console.log("Signup requires confirmation.");
         setInfo("Check your email to confirm your account.");
         setResendStatus("confirm");
         setLoading(false);
         return;
       }
 
-      console.log("Starting sign in...");
       const { data: signInData, error: signInError } =
         await supabase.auth.signInWithPassword({
           email,
           password
         });
-
-      console.log("SignIn response:", { data: signInData, error: signInError });
 
       if (signInError) {
         setError(signInError.message);
@@ -137,16 +128,13 @@ export default function AuthForm({ mode }) {
       }
 
       if (signInData?.user) {
-        console.log("SignIn succeeded, upserting profile...");
-        const { error: profileError } = await supabase.from("profiles").upsert({
+        await supabase.from("profiles").upsert({
           id: signInData.user.id,
           email: signInData.user.email,
           updated_at: new Date().toISOString()
         });
-        console.log("Profile upsert response:", profileError);
       }
 
-      console.log("Redirecting to dashboard...");
       finishRedirect("/dashboard");
     } catch (err) {
       console.error("Auth Exception:", err);

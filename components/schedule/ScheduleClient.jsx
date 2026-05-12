@@ -22,15 +22,15 @@ import { CHILD_PROFILE } from "@/lib/mockData";
 const SCHEDULE = {
   Lun: [
     { time: "07:00", end: "07:30", label: "Desayuno", category: "routine",  color: "#F5D06F", icon: "sun" },
-    { time: "08:00", end: "08:10", label: "Llegada al colegio", category: "school", color: "#B8A4FF", icon: "activity" },
-    { time: "08:15", end: "09:00", label: "Lengua y Literatura", category: "school", color: "#B8A4FF", icon: "book" },
+    { time: "08:00", end: "08:10", label: "Llegada al colegio", category: "school", color: "var(--brand)", icon: "activity" },
+    { time: "08:15", end: "09:00", label: "Lengua y Literatura", category: "school", color: "var(--brand)", icon: "book" },
     { time: "09:00", end: "09:45", label: "Matemáticas ⚡", category: "school-hard", color: "#FFB4A2", icon: "book" },
     { time: "09:45", end: "10:15", label: "Recreo", category: "break", color: "#5EDC9A", icon: "heart" },
-    { time: "10:15", end: "11:00", label: "Ciencias Naturales", category: "school", color: "#B8A4FF", icon: "book" },
-    { time: "11:00", end: "11:45", label: "Historia", category: "school", color: "#B8A4FF", icon: "book" },
+    { time: "10:15", end: "11:00", label: "Ciencias Naturales", category: "school", color: "var(--brand)", icon: "book" },
+    { time: "11:00", end: "11:45", label: "Historia", category: "school", color: "var(--brand)", icon: "book" },
     { time: "11:45", end: "12:30", label: "Educación Física", category: "activity", color: "#A8E6CF", icon: "activity" },
     { time: "12:30", end: "13:30", label: "Almuerzo", category: "routine", color: "#F5D06F", icon: "sun" },
-    { time: "13:30", end: "14:15", label: "Inglés", category: "school", color: "#B8A4FF", icon: "book" },
+    { time: "13:30", end: "14:15", label: "Inglés", category: "school", color: "var(--brand)", icon: "book" },
     { time: "14:15", end: "15:00", label: "Arte y Creatividad", category: "creative", color: "#F4A6C0", icon: "music" },
     { time: "15:00", end: "15:30", label: "Salida · Merienda", category: "routine", color: "#F5D06F", icon: "sun" },
     { time: "16:00", end: "17:30", label: "Deberes", category: "study", color: "#8B7FD8", icon: "book" },
@@ -42,12 +42,12 @@ const SCHEDULE = {
   Mar: [
     { time: "07:00", end: "07:30", label: "Desayuno", category: "routine", color: "#F5D06F", icon: "sun" },
     { time: "08:15", end: "09:00", label: "Matemáticas ⚡", category: "school-hard", color: "#FFB4A2", icon: "book" },
-    { time: "09:00", end: "09:45", label: "Ciencias Sociales", category: "school", color: "#B8A4FF", icon: "book" },
+    { time: "09:00", end: "09:45", label: "Ciencias Sociales", category: "school", color: "var(--brand)", icon: "book" },
     { time: "09:45", end: "10:15", label: "Recreo", category: "break", color: "#5EDC9A", icon: "heart" },
-    { time: "10:15", end: "11:45", label: "Tecnología", category: "school", color: "#B8A4FF", icon: "activity" },
+    { time: "10:15", end: "11:45", label: "Tecnología", category: "school", color: "var(--brand)", icon: "activity" },
     { time: "11:45", end: "12:30", label: "Música", category: "creative", color: "#F4A6C0", icon: "music" },
     { time: "12:30", end: "13:30", label: "Almuerzo", category: "routine", color: "#F5D06F", icon: "sun" },
-    { time: "13:30", end: "15:00", label: "Lengua y Literatura", category: "school", color: "#B8A4FF", icon: "book" },
+    { time: "13:30", end: "15:00", label: "Lengua y Literatura", category: "school", color: "var(--brand)", icon: "book" },
     { time: "15:00", end: "15:30", label: "Salida · Merienda", category: "routine", color: "#F5D06F", icon: "sun" },
     { time: "16:00", end: "17:00", label: "Deberes", category: "study", color: "#8B7FD8", icon: "book" },
     { time: "17:30", end: "19:00", label: "Natación 🏊", category: "activity", color: "#A8E6CF", icon: "activity" },
@@ -56,7 +56,7 @@ const SCHEDULE = {
   ],
   Mié: [
     { time: "07:00", end: "07:30", label: "Desayuno", category: "routine", color: "#F5D06F", icon: "sun" },
-    { time: "08:15", end: "09:45", label: "Inglés (doble clase)", category: "school", color: "#B8A4FF", icon: "book" },
+    { time: "08:15", end: "09:45", label: "Inglés (doble clase)", category: "school", color: "var(--brand)", icon: "book" },
     { time: "09:45", end: "10:15", label: "Recreo", category: "break", color: "#5EDC9A", icon: "heart" },
     { time: "10:15", end: "12:30", label: "Matemáticas ⚡ + Ciencias", category: "school-hard", color: "#FFB4A2", icon: "book" },
     { time: "12:30", end: "13:30", label: "Almuerzo", category: "routine", color: "#F5D06F", icon: "sun" },
@@ -69,9 +69,9 @@ const SCHEDULE = {
   ],
   Jue: [
     { time: "07:00", end: "07:30", label: "Desayuno", category: "routine", color: "#F5D06F", icon: "sun" },
-    { time: "08:15", end: "09:45", label: "Historia + Geografía", category: "school", color: "#B8A4FF", icon: "book" },
+    { time: "08:15", end: "09:45", label: "Historia + Geografía", category: "school", color: "var(--brand)", icon: "book" },
     { time: "09:45", end: "10:15", label: "Recreo", category: "break", color: "#5EDC9A", icon: "heart" },
-    { time: "10:15", end: "12:30", label: "Ciencias + Lengua", category: "school", color: "#B8A4FF", icon: "book" },
+    { time: "10:15", end: "12:30", label: "Ciencias + Lengua", category: "school", color: "var(--brand)", icon: "book" },
     { time: "12:30", end: "13:30", label: "Almuerzo", category: "routine", color: "#F5D06F", icon: "sun" },
     { time: "13:30", end: "14:15", label: "Excursión / Proyecto", category: "creative", color: "#F4A6C0", icon: "heart" },
     { time: "14:15", end: "15:00", label: "Música", category: "creative", color: "#F4A6C0", icon: "music" },
@@ -83,11 +83,11 @@ const SCHEDULE = {
   ],
   Vie: [
     { time: "07:00", end: "07:30", label: "Desayuno", category: "routine", color: "#F5D06F", icon: "sun" },
-    { time: "08:15", end: "09:45", label: "Inglés + Tecnología", category: "school", color: "#B8A4FF", icon: "book" },
+    { time: "08:15", end: "09:45", label: "Inglés + Tecnología", category: "school", color: "var(--brand)", icon: "book" },
     { time: "09:45", end: "10:15", label: "Recreo", category: "break", color: "#5EDC9A", icon: "heart" },
     { time: "10:15", end: "12:30", label: "Arte + Educación Física", category: "activity", color: "#A8E6CF", icon: "activity" },
     { time: "12:30", end: "13:30", label: "Almuerzo", category: "routine", color: "#F5D06F", icon: "sun" },
-    { time: "13:30", end: "15:00", label: "Historia + Ciencias", category: "school", color: "#B8A4FF", icon: "book" },
+    { time: "13:30", end: "15:00", label: "Historia + Ciencias", category: "school", color: "var(--brand)", icon: "book" },
     { time: "15:00", end: "15:30", label: "Salida · ¡Fin de semana!", category: "break", color: "#5EDC9A", icon: "heart" },
     { time: "16:00", end: "17:30", label: "Merienda + Amigos", category: "break", color: "#5EDC9A", icon: "heart" },
     { time: "19:00", end: "19:30", label: "Cena familiar", category: "routine", color: "#F5D06F", icon: "sun" },
@@ -132,7 +132,7 @@ export default function ScheduleClient() {
 
       <button onClick={() => router.push("/dashboard")} style={{
         position: "fixed", top: 28, left: 28, zIndex: 10,
-        background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)",
+        background: "var(--surface)", border: "1px solid var(--border)",
         borderRadius: 10, padding: "8px 14px", cursor: "pointer",
         color: "var(--ink-muted)", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13,
       }}>
@@ -175,9 +175,9 @@ export default function ScheduleClient() {
                 onClick={() => setActiveDay(day)}
                 style={{
                   flex: 1, padding: "10px 8px", borderRadius: 12,
-                  background: isActive ? "rgba(184,164,255,0.15)" : "rgba(255,255,255,0.03)",
-                  border: isActive ? "1px solid rgba(184,164,255,0.35)" : "1px solid var(--border)",
-                  color: isActive ? "#D4C5FF" : "var(--ink-dim)",
+                  background: isActive ? "rgb(var(--brand-rgb) / 0.15)" : "var(--surface)",
+                  border: isActive ? "1px solid rgb(var(--brand-rgb) / 0.35)" : "1px solid var(--border)",
+                  color: isActive ? "var(--brand)" : "var(--ink-dim)",
                   fontSize: 13, fontWeight: isActive ? 700 : 400,
                   cursor: "pointer", transition: "all 0.2s",
                   fontFamily: "Inter, sans-serif",
@@ -189,7 +189,7 @@ export default function ScheduleClient() {
                   <span style={{
                     position: "absolute", top: 4, right: 4,
                     width: 5, height: 5, borderRadius: "50%",
-                    background: "#B8A4FF",
+                    background: "var(--brand)",
                   }}/>
                 )}
               </button>
@@ -200,7 +200,7 @@ export default function ScheduleClient() {
         {/* Leyenda de categorías */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
           {[
-            { cat: "school", label: "Colegio", color: "#B8A4FF" },
+            { cat: "school", label: "Colegio", color: "var(--brand)" },
             { cat: "school-hard", label: "Alta exigencia", color: "#FFB4A2" },
             { cat: "activity", label: "Actividad física", color: "#A8E6CF" },
             { cat: "break", label: "Descanso", color: "#5EDC9A" },
@@ -228,8 +228,8 @@ export default function ScheduleClient() {
                 display: "flex", alignItems: "center", gap: 14,
                 padding: "12px 16px", borderRadius: 12,
                 background: event.category === "sleep"
-                  ? "rgba(255,255,255,0.015)"
-                  : "rgba(255,255,255,0.025)",
+                  ? "var(--surface)"
+                  : "var(--surface)",
                 border: `1px solid ${event.color}25`,
                 opacity: event.category === "sleep" ? 0.5 : 1,
                 transition: "all 0.2s",
@@ -277,7 +277,7 @@ export default function ScheduleClient() {
         {/* Nota informativa */}
         <div style={{
           marginTop: 24, padding: "14px 16px", borderRadius: 12,
-          background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)",
+          background: "var(--surface)", border: "1px solid var(--border)",
           fontSize: 13, color: "var(--ink-dim)", lineHeight: 1.6,
         }}>
           <strong style={{ color: "var(--ink)" }}>Nota:</strong> Los momentos marcados como{" "}

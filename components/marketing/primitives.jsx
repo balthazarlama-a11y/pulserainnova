@@ -23,9 +23,9 @@ export const Pill = ({ children, dot, style = {}, onClick }) => (
       alignItems: "center",
       gap: 8,
       padding: "6px 14px 6px 12px",
-      border: "1px solid rgba(255,255,255,0.12)",
+      border: "1px solid var(--border-strong)",
       borderRadius: 999,
-      background: "rgba(255,255,255,0.04)",
+      background: "var(--surface)",
       fontSize: 13,
       color: "var(--ink-muted)",
       letterSpacing: 0.2,
@@ -63,16 +63,16 @@ export const Button = ({
   };
   const variants = {
     primary: {
-      background: "linear-gradient(180deg, #B8A4FF, #8B7FD8)",
-      color: "#0D0824",
-      boxShadow: "0 8px 24px -6px rgba(184,164,255,0.5), inset 0 1px 0 rgba(255,255,255,0.3)",
+      background: "linear-gradient(180deg, var(--brand), rgb(var(--brand-rgb) / 0.78))",
+      color: "var(--ink-on-accent)",
+      boxShadow: "0 8px 24px -6px rgb(var(--brand-rgb) / 0.5), inset 0 1px 0 rgba(255,255,255,0.3)",
       border: "1px solid rgba(255,255,255,0.2)",
       fontWeight: 600
     },
     glass: {
-      background: "rgba(255,255,255,0.06)",
+      background: "var(--surface-elevated)",
       color: "var(--ink)",
-      border: "1px solid rgba(255,255,255,0.12)",
+      border: "1px solid var(--border-strong)",
       backdropFilter: "blur(20px)",
       fontWeight: 500
     },
@@ -83,9 +83,9 @@ export const Button = ({
       fontWeight: 500
     },
     soft: {
-      background: "rgba(184,164,255,0.12)",
-      color: "#D4C5FF",
-      border: "1px solid rgba(184,164,255,0.25)",
+      background: "rgb(var(--brand-rgb) / 0.12)",
+      color: "var(--brand)",
+      border: "1px solid rgb(var(--brand-rgb) / 0.25)",
       fontWeight: 500
     }
   };
@@ -128,15 +128,15 @@ export const Card = ({ children, style = {}, hover = false, onClick, ...rest }) 
       {...rest}
       style={{
         position: "relative",
-        background: "linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.015))",
-        border: "1px solid rgba(255,255,255,0.08)",
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
         borderRadius: 20,
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
-        transition: "transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease",
+        transition: "transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, background-color 0.4s ease",
         transform: h ? "translateY(-2px)" : "none",
-        borderColor: h ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.08)",
-        boxShadow: "0 0 0 1px rgba(255,255,255,0.02), 0 0 32px var(--card-glow, rgba(0,0,0,0))",
+        borderColor: h ? "var(--border-strong)" : "var(--border)",
+        boxShadow: "var(--shadow-card), 0 0 32px var(--card-glow, transparent)",
         cursor: onClick ? "pointer" : "default",
         ...style
       }}
@@ -153,7 +153,7 @@ export const SectionLabel = ({ children }) => (
       fontWeight: 500,
       letterSpacing: 2,
       textTransform: "uppercase",
-      color: "rgba(184,164,255,0.9)",
+      color: "rgb(var(--brand-rgb) / 0.9)",
       marginBottom: 16,
       display: "flex",
       alignItems: "center",
@@ -164,7 +164,7 @@ export const SectionLabel = ({ children }) => (
       style={{
         width: 28,
         height: 1,
-        background: "linear-gradient(90deg, transparent, rgba(184,164,255,0.6))"
+        background: "linear-gradient(90deg, transparent, rgb(var(--brand-rgb) / 0.6))"
       }}
     />
     {children}

@@ -65,26 +65,15 @@ const simulationSupabase = {
 export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  if (SIMULATION_ONLY) {
-    return (
-      <AuthContext.Provider
-        value={{
-          supabase: simulationSupabase,
-          session: SIMULATION_SESSION,
-          user: SIMULATION_USER,
-          loading: false
-        }}
-      >
-        {children}
-      </AuthContext.Provider>
-    );
-  }
-
-  const supabase = useMemo(() => createClient(), []);
-  const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const supabase = useMemo(
+    () => (SIMULATION_ONLY ? simulationSupabase : createClient()),
+    []
+  );
+  const [session, setSession] = useState(SIMULATION_ONLY ? SIMULATION_SESSION : null);
+  const [loading, setLoading] = useState(!SIMULATION_ONLY);
 
   useEffect(() => {
+    if (SIMULATION_ONLY) return;
     let isMounted = true;
 
     supabase.auth.getSession().then(({ data }) => {
@@ -105,16 +94,19 @@ export function AuthProvider({ children }) {
     };
   }, [supabase]);
 
-  return (
-    <AuthContext.Provider
-      value={{
+  const value = SIMULATION_ONLY
+    ? {
+        supabase: simulationSupabase,
+        session: SIMULATION_SESSION,
+        user: SIMULATION_USER,
+        loading: false
+      }
+    : {
         supabase,
         session,
         user: session?.user ?? null,
         loading
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+      };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

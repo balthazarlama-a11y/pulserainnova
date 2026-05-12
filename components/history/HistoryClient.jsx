@@ -58,7 +58,7 @@ export default function HistoryClient() {
     <div style={{ maxWidth: 960, margin: "0 auto" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 32 }}>
         <Link href="/dashboard" style={{
-          background: "rgba(255,255,255,0.05)", border: "1px solid var(--border)",
+          background: "var(--surface-elevated)", border: "1px solid var(--border)",
           borderRadius: 10, padding: "8px 14px", cursor: "pointer",
           color: "var(--ink-muted)", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, textDecoration: "none"
         }}>
@@ -80,9 +80,9 @@ export default function HistoryClient() {
         ].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)} style={{
             padding: "8px 16px", fontSize: 13, borderRadius: 10,
-            background: tab === t.key ? "rgba(184,164,255,0.15)" : "rgba(255,255,255,0.04)",
-            border: `1px solid ${tab === t.key ? "rgba(184,164,255,0.3)" : "var(--border)"}`,
-            color: tab === t.key ? "#D4C5FF" : "var(--ink-muted)",
+            background: tab === t.key ? "rgb(var(--brand-rgb) / 0.15)" : "var(--surface)",
+            border: `1px solid ${tab === t.key ? "rgb(var(--brand-rgb) / 0.3)" : "var(--border)"}`,
+            color: tab === t.key ? "var(--brand)" : "var(--ink-muted)",
             cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "Inter, sans-serif"
           }}>{t.icon} {t.label}</button>
         ))}
@@ -101,9 +101,9 @@ export default function HistoryClient() {
                 onClick={() => setPeriod(item.key)}
                 style={{
                   padding: "8px 14px", fontSize: 12, borderRadius: 999,
-                  background: period === item.key ? "rgba(184,164,255,0.16)" : "rgba(255,255,255,0.04)",
-                  border: `1px solid ${period === item.key ? "rgba(184,164,255,0.35)" : "var(--border)"}`,
-                  color: period === item.key ? "#D4C5FF" : "var(--ink-muted)",
+                  background: period === item.key ? "rgb(var(--brand-rgb) / 0.16)" : "var(--surface)",
+                  border: `1px solid ${period === item.key ? "rgb(var(--brand-rgb) / 0.35)" : "var(--border)"}`,
+                  color: period === item.key ? "var(--brand)" : "var(--ink-muted)",
                   cursor: "pointer", fontFamily: "Inter, sans-serif",
                 }}
               >
@@ -119,7 +119,7 @@ export default function HistoryClient() {
                   onChange={(e) => setCustomStart(e.target.value)}
                   style={{
                     padding: "6px 10px", borderRadius: 8,
-                    background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)",
+                    background: "var(--surface)", border: "1px solid var(--border)",
                     color: "var(--ink)", fontSize: 12
                   }}
                 />
@@ -129,7 +129,7 @@ export default function HistoryClient() {
                   onChange={(e) => setCustomEnd(e.target.value)}
                   style={{
                     padding: "6px 10px", borderRadius: 8,
-                    background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)",
+                    background: "var(--surface)", border: "1px solid var(--border)",
                     color: "var(--ink)", fontSize: 12
                   }}
                 />
@@ -143,7 +143,7 @@ export default function HistoryClient() {
             return (
               <button key={i} onClick={() => setSelectedSession(s)} className="history-row" style={{
                 padding: "18px 22px", borderRadius: 16,
-                background: "linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01))",
+                background: "linear-gradient(180deg, var(--surface), rgba(255,255,255,0.01))",
                 border: "1px solid var(--border)",
                 display: "grid", gridTemplateColumns: "140px 1fr auto", alignItems: "center", gap: 20,
                 cursor: "pointer", textAlign: "left"
@@ -156,7 +156,7 @@ export default function HistoryClient() {
                   <div>
                     <div style={{ fontSize: 11, color: "var(--ink-dim)", letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>Estrés promedio</div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <div style={{ width: 100, height: 6, borderRadius: 3, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+                      <div style={{ width: 100, height: 6, borderRadius: 3, background: "var(--surface-elevated)", overflow: "hidden" }}>
                         <div style={{ width: `${s.avgStress}%`, height: "100%", borderRadius: 3, background: state.hex, transition: "width 0.3s" }}/>
                       </div>
                       <span style={{ fontSize: 14, fontWeight: 600, color: state.hex }}>{s.avgStress}</span>
@@ -184,7 +184,7 @@ export default function HistoryClient() {
           {selectedSession && detailDay && (
             <div style={{
               marginTop: 18, padding: 18, borderRadius: 16,
-              background: "rgba(255,255,255,0.03)", border: "1px solid var(--border)",
+              background: "var(--surface)", border: "1px solid var(--border)",
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <div>
@@ -197,7 +197,7 @@ export default function HistoryClient() {
                 </div>
                 <button onClick={() => setSelectedSession(null)} style={{
                   padding: "6px 10px", borderRadius: 8,
-                  background: "rgba(255,255,255,0.05)", border: "1px solid var(--border)",
+                  background: "var(--surface-elevated)", border: "1px solid var(--border)",
                   color: "var(--ink-muted)", cursor: "pointer", fontSize: 12
                 }}>Cerrar</button>
               </div>
@@ -221,19 +221,19 @@ export default function HistoryClient() {
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
-                <div style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)" }}>
+                <div style={{ padding: "10px 12px", borderRadius: 10, background: "var(--surface)", border: "1px solid var(--border)" }}>
                   <div style={{ fontSize: 11, color: "var(--ink-faint)", textTransform: "uppercase", marginBottom: 4 }}>Estrés promedio</div>
                   <div style={{ fontSize: 16, fontWeight: 600 }}>{detailDay.summary.avgStress}</div>
                 </div>
-                <div style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)" }}>
+                <div style={{ padding: "10px 12px", borderRadius: 10, background: "var(--surface)", border: "1px solid var(--border)" }}>
                   <div style={{ fontSize: 11, color: "var(--ink-faint)", textTransform: "uppercase", marginBottom: 4 }}>Pico del día</div>
                   <div style={{ fontSize: 16, fontWeight: 600 }}>{detailDay.summary.peakStress}</div>
                 </div>
-                <div style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)" }}>
+                <div style={{ padding: "10px 12px", borderRadius: 10, background: "var(--surface)", border: "1px solid var(--border)" }}>
                   <div style={{ fontSize: 11, color: "var(--ink-faint)", textTransform: "uppercase", marginBottom: 4 }}>BPM promedio</div>
                   <div style={{ fontSize: 16, fontWeight: 600 }}>{detailDay.summary.avgBpm}</div>
                 </div>
-                <div style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)" }}>
+                <div style={{ padding: "10px 12px", borderRadius: 10, background: "var(--surface)", border: "1px solid var(--border)" }}>
                   <div style={{ fontSize: 11, color: "var(--ink-faint)", textTransform: "uppercase", marginBottom: 4 }}>Ejercicios</div>
                   <div style={{ fontSize: 16, fontWeight: 600 }}>{detailDay.summary.exercisesCount}</div>
                 </div>
@@ -260,11 +260,11 @@ export default function HistoryClient() {
             return (
               <div key={i} style={{
                 padding: "18px 22px", borderRadius: 16,
-                background: "linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01))",
+                background: "linear-gradient(180deg, var(--surface), rgba(255,255,255,0.01))",
                 border: "1px solid var(--border)",
                 display: "flex", alignItems: "center", gap: 20
               }}>
-                <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(184,164,255,0.12)", border: "1px solid rgba(184,164,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", color: "#B8A4FF" }}>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgb(var(--brand-rgb) / 0.12)", border: "1px solid rgb(var(--brand-rgb) / 0.25)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--brand)" }}>
                   <IconActivity size={20}/>
                 </div>
                 <div style={{ flex: 1 }}>

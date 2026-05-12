@@ -7,6 +7,9 @@ import { IconX } from "@/components/marketing/icons";
 import { normalizeAccent, SEMANTIC_COLORS } from "@/lib/utils";
 
 const SPEEDS = [1, 2, 5, 10];
+const BAR_START_HOUR = 6;
+const BAR_END_HOUR = 23;
+const BAR_RANGE_HOURS = BAR_END_HOUR - BAR_START_HOUR;
 
 export default function SimulationPanel() {
   const {
@@ -22,7 +25,7 @@ export default function SimulationPanel() {
     if (!progressRef.current) return;
     const rect = progressRef.current.getBoundingClientRect();
     const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    const hour = pct * 23;
+    const hour = BAR_START_HOUR + pct * BAR_RANGE_HOURS;
     jumpToHour(hour);
   }, [jumpToHour]);
 
@@ -31,10 +34,12 @@ export default function SimulationPanel() {
   const dayData = weekData[currentDay];
   const simData = getCurrentSimData();
   const state = stressState(simData.stress);
-  const progressPct = ((currentHour * 60 + currentMinute) / (23 * 60)) * 100;
-
-  // Find next upcoming event
   const currentTimeDecimal = currentHour + currentMinute / 60;
+  const progressPct = Math.max(
+    0,
+    Math.min(100, ((currentTimeDecimal - BAR_START_HOUR) / BAR_RANGE_HOURS) * 100)
+  );
+
   const nextEvent = dayData?.events.find((evt) => evt.hour > currentTimeDecimal);
 
   return (
@@ -88,7 +93,7 @@ export default function SimulationPanel() {
               onClick={stopSimulation}
               style={{
                 padding: "6px 14px", borderRadius: 8,
-                background: "rgba(236,91,107,0.15)", border: "1px solid rgba(236,91,107,0.3)",
+                background: "rgb(var(--danger-rgb) / 0.15)", border: "1px solid rgb(var(--danger-rgb) / 0.3)",
                 color: "#EC5B6B", fontSize: 12, fontWeight: 500, cursor: "pointer",
                 fontFamily: "Inter, sans-serif",
               }}
@@ -97,7 +102,7 @@ export default function SimulationPanel() {
               onClick={() => setPanelOpen(false)}
               style={{
                 width: 32, height: 32, borderRadius: 8,
-                background: "rgba(255,255,255,0.06)", border: "1px solid var(--border)",
+                background: "var(--surface-elevated)", border: "1px solid var(--border)",
                 color: "var(--ink-dim)", cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}
@@ -116,7 +121,7 @@ export default function SimulationPanel() {
                 onClick={() => jumpToDay(i)}
                 style={{
                   padding: "8px 14px", borderRadius: 10,
-                  background: isActive ? `${dayState.hex}22` : "rgba(255,255,255,0.03)",
+                  background: isActive ? `${dayState.hex}22` : "var(--surface)",
                   border: isActive ? `1px solid ${dayState.hex}50` : "1px solid var(--border)",
                   color: isActive ? dayState.hex : "var(--ink-dim)",
                   fontSize: 13, fontWeight: isActive ? 600 : 400,
@@ -153,7 +158,7 @@ export default function SimulationPanel() {
               position: "relative",
               height: 8,
               borderRadius: 4,
-              background: "rgba(255,255,255,0.06)",
+              background: "var(--surface-elevated)",
               cursor: "pointer",
               overflow: "hidden",
             }}
@@ -168,13 +173,17 @@ export default function SimulationPanel() {
             {/* Event markers */}
             {dayData.events.map((evt, i) => {
               const markerColor = normalizeAccent(evt.color);
+              const markerPct = Math.max(
+                0,
+                Math.min(100, ((evt.hour - BAR_START_HOUR) / BAR_RANGE_HOURS) * 100)
+              );
               return (
                 <div
                   key={i}
                   title={`${evt.time} — ${evt.event}`}
                   style={{
                     position: "absolute",
-                    left: `${(evt.hour / 23) * 100}%`,
+                    left: `${markerPct}%`,
                     top: -2,
                     width: 4,
                     height: 12,
@@ -221,7 +230,7 @@ export default function SimulationPanel() {
           </div>
           <div style={{
             padding: 14, borderRadius: 12,
-            background: "rgba(255,255,255,0.03)", border: "1px solid var(--border)",
+            background: "var(--surface)", border: "1px solid var(--border)",
             textAlign: "center",
           }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: state.hex, marginBottom: 2, transition: "color 0.4s" }}>
@@ -235,7 +244,7 @@ export default function SimulationPanel() {
         {(latestEvent || nextEvent) && (
           <div style={{
             padding: "10px 14px", borderRadius: 10,
-            background: "rgba(255,255,255,0.03)", border: "1px solid var(--border)",
+            background: "var(--surface)", border: "1px solid var(--border)",
             fontSize: 13, color: "var(--ink-muted)", marginBottom: 16,
             display: "flex", alignItems: "center", gap: 10,
           }}>
@@ -267,7 +276,7 @@ export default function SimulationPanel() {
               disabled={currentDay === 0}
               style={{
                 width: 36, height: 36, borderRadius: 10,
-                background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)",
+                background: "var(--surface)", border: "1px solid var(--border)",
                 color: currentDay === 0 ? "var(--ink-faint)" : "var(--ink-muted)",
                 cursor: currentDay === 0 ? "not-allowed" : "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center",
@@ -282,10 +291,10 @@ export default function SimulationPanel() {
                 width: 48, height: 48, borderRadius: 14,
                 background: playing
                   ? "linear-gradient(135deg, #B8A4FF, #8B7FD8)"
-                  : "rgba(184,164,255,0.15)",
+                  : "rgb(var(--brand-rgb) / 0.15)",
                 border: playing
                   ? "1px solid rgba(255,255,255,0.2)"
-                  : "1px solid rgba(184,164,255,0.4)",
+                  : "1px solid rgb(var(--brand-rgb) / 0.4)",
                 color: playing ? "#0D0824" : "#B8A4FF",
                 cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center",
@@ -311,7 +320,7 @@ export default function SimulationPanel() {
               disabled={currentDay === 6}
               style={{
                 width: 36, height: 36, borderRadius: 10,
-                background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)",
+                background: "var(--surface)", border: "1px solid var(--border)",
                 color: currentDay === 6 ? "var(--ink-faint)" : "var(--ink-muted)",
                 cursor: currentDay === 6 ? "not-allowed" : "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center",
@@ -329,8 +338,8 @@ export default function SimulationPanel() {
                 onClick={() => setSpeed(s)}
                 style={{
                   padding: "5px 10px", borderRadius: 8,
-                  background: speed === s ? "rgba(184,164,255,0.2)" : "rgba(255,255,255,0.03)",
-                  border: speed === s ? "1px solid rgba(184,164,255,0.4)" : "1px solid var(--border)",
+                  background: speed === s ? "rgb(var(--brand-rgb) / 0.2)" : "var(--surface)",
+                  border: speed === s ? "1px solid rgb(var(--brand-rgb) / 0.4)" : "1px solid var(--border)",
                   color: speed === s ? "#D4C5FF" : "var(--ink-dim)",
                   fontSize: 12, fontWeight: speed === s ? 600 : 400,
                   cursor: "pointer", transition: "all 0.2s",
@@ -346,7 +355,7 @@ export default function SimulationPanel() {
         {/* Day summary */}
         <div style={{
           marginTop: 16, padding: 14, borderRadius: 12,
-          background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)",
+          background: "var(--surface)", border: "1px solid var(--border)",
           display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8,
         }}>
           {[

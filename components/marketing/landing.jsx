@@ -1,12 +1,7 @@
 import React from "react";
 import Bracelet from "@/components/marketing/bracelet";
 import HeroGeometric from "@/components/marketing/hero";
-import {
-  Button,
-  Card,
-  GradientText,
-  SectionLabel
-} from "@/components/marketing/primitives";
+import { Button, GradientText, SectionLabel } from "@/components/marketing/primitives";
 import {
   IconArrowRight,
   IconBell,
@@ -18,7 +13,7 @@ import {
   IconSparkles,
   IconStar,
   IconWatch,
-  IconWind
+  IconWind,
 } from "@/components/marketing/icons";
 
 const smoothScroll = (id) => {
@@ -27,6 +22,7 @@ const smoothScroll = (id) => {
   if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
 };
 
+// ─── NavBar ───────────────────────────────────────────────────────────────────
 const NavBar = ({ onSignIn, onSignUp }) => {
   const [scrolled, setScrolled] = React.useState(false);
 
@@ -38,55 +34,45 @@ const NavBar = ({ onSignIn, onSignUp }) => {
 
   return (
     <nav
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 50,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: scrolled ? "14px 32px" : "20px 32px",
-        background: scrolled ? "rgba(10,10,26,0.72)" : "transparent",
-        backdropFilter: scrolled ? "blur(20px) saturate(1.4)" : "none",
-        WebkitBackdropFilter: scrolled ? "blur(20px) saturate(1.4)" : "none",
-        borderBottom: scrolled ? "1px solid rgba(255,255,255,0.06)" : "1px solid transparent",
-        transition: "all 0.3s ease"
-      }}
+      className={`fixed top-0 inset-x-0 z-50 flex items-center justify-between transition-all duration-300 ${
+        scrolled
+          ? "py-3.5 px-6 sm:px-8 bg-[rgba(10,10,26,0.72)] backdrop-blur-xl backdrop-saturate-150 border-b border-white/[0.06]"
+          : "py-5 px-6 sm:px-8 bg-transparent border-b border-transparent"
+      }`}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div className="flex items-center gap-2.5">
         <div
+          className="w-7 h-7 rounded-lg flex items-center justify-center"
           style={{
-            width: 28,
-            height: 28,
-            borderRadius: 8,
             background: "linear-gradient(135deg, #B8A4FF, #A8E6CF)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow: "0 4px 16px rgba(184,164,255,0.4)"
+            boxShadow: "0 4px 16px rgba(184,164,255,0.4)",
           }}
         >
-          <div style={{ width: 10, height: 10, borderRadius: 5, background: "#0A0A1A" }} />
+          <div className="w-2.5 h-2.5 rounded-full bg-[#0A0A1A]" />
         </div>
-        <span style={{ fontWeight: 700, fontSize: 17, letterSpacing: -0.3 }}>CalmBand</span>
+        <span className="font-bold text-[17px] tracking-tight">CalmBand</span>
       </div>
-      <div style={{ display: "flex", gap: 32, fontSize: 14, color: "var(--ink-muted)" }} className="nav-links">
-        <a href="#producto" onClick={(e) => { e.preventDefault(); smoothScroll("producto"); }} style={{ color: "inherit", textDecoration: "none", cursor: "pointer" }}>
-          Producto
-        </a>
-        <a href="#features" onClick={(e) => { e.preventDefault(); smoothScroll("features"); }} style={{ color: "inherit", textDecoration: "none", cursor: "pointer" }}>
-          Características
-        </a>
-        <a href="#how-it-works" onClick={(e) => { e.preventDefault(); smoothScroll("how-it-works"); }} style={{ color: "inherit", textDecoration: "none", cursor: "pointer" }}>
-          Cómo funciona
-        </a>
-        <a href="#testimonials" onClick={(e) => { e.preventDefault(); smoothScroll("testimonials"); }} style={{ color: "inherit", textDecoration: "none", cursor: "pointer" }}>
-          Familias
-        </a>
+      <div className="nav-links hidden md:flex gap-8 text-sm text-ink-muted">
+        {[
+          ["#producto", "Producto"],
+          ["#features", "Características"],
+          ["#how-it-works", "Cómo funciona"],
+          ["#testimonials", "Familias"],
+        ].map(([href, label]) => (
+          <a
+            key={href}
+            href={href}
+            onClick={(e) => {
+              e.preventDefault();
+              smoothScroll(href.slice(1));
+            }}
+            className="cursor-pointer no-underline text-inherit hover:text-ink transition-colors"
+          >
+            {label}
+          </a>
+        ))}
       </div>
-      <div style={{ display: "flex", gap: 8 }}>
+      <div className="flex gap-2">
         <Button variant="ghost" size="sm" onClick={onSignIn}>
           Iniciar sesión
         </Button>
@@ -98,304 +84,221 @@ const NavBar = ({ onSignIn, onSignUp }) => {
   );
 };
 
+// ─── FeatureCard ──────────────────────────────────────────────────────────────
 const FeatureCard = ({ icon, title, desc, accent, delay }) => (
-  <Card
-    hover
+  <div
+    className="card-elevated p-7 opacity-0 transition-transform hover:-translate-y-1"
     style={{
-      padding: 28,
-      opacity: 0,
-      animation: `heroTextIn 0.7s ${delay}s forwards`
+      animation: `heroTextIn 0.7s ${delay}s forwards`,
+      "--card-glow": `${accent}33`,
     }}
   >
     <div
+      className="w-11 h-11 rounded-xl flex items-center justify-center mb-5"
       style={{
-        width: 44,
-        height: 44,
-        borderRadius: 12,
         background: `linear-gradient(135deg, ${accent}40, ${accent}10)`,
         border: `1px solid ${accent}30`,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
         color: accent,
-        marginBottom: 20
       }}
     >
       {icon}
     </div>
-    <h3 style={{ fontSize: 18, fontWeight: 600, margin: "0 0 8px", letterSpacing: -0.2 }}>{title}</h3>
-    <p style={{ fontSize: 14, lineHeight: 1.55, color: "var(--ink-dim)", margin: 0 }}>{desc}</p>
-  </Card>
+    <h3 className="text-lg font-semibold m-0 mb-2 tracking-tight">{title}</h3>
+    <p className="text-sm leading-relaxed text-ink-dim m-0">{desc}</p>
+  </div>
 );
 
+// ─── Features ─────────────────────────────────────────────────────────────────
 const Features = () => (
-  <section id="features" style={{ padding: "120px 32px", position: "relative" }}>
-    <div style={{ maxWidth: 1160, margin: "0 auto" }}>
-      <div style={{ textAlign: "center", marginBottom: 64 }}>
-        <SectionLabel>Caracteristicas</SectionLabel>
+  <section id="features" className="py-24 sm:py-32 px-6 sm:px-8 relative">
+    {/* Aurora regional */}
+    <div
+      className="absolute inset-0 pointer-events-none"
+      style={{
+        background:
+          "radial-gradient(ellipse 60% 50% at 50% 30%, rgba(184,164,255,0.08), transparent 70%)",
+      }}
+    />
+    <div className="max-w-[1160px] mx-auto relative">
+      <div className="text-center mb-16">
+        <SectionLabel>Características</SectionLabel>
         <h2
-          style={{
-            fontFamily: "Fraunces, serif",
-            fontSize: "clamp(36px, 5vw, 56px)",
-            fontWeight: 500,
-            margin: "0 auto 16px",
-            maxWidth: 700,
-            lineHeight: 1.1,
-            letterSpacing: "-0.02em"
-          }}
+          className="font-display font-medium m-0 mb-4 mx-auto max-w-[700px] leading-[1.1]"
+          style={{ fontSize: "clamp(36px, 5vw, 56px)", letterSpacing: "-0.02em" }}
         >
-          Disenado para <GradientText>proteger lo que mas importa</GradientText>
+          Diseñado para <GradientText>proteger lo que más importa</GradientText>
         </h2>
-        <p style={{ color: "var(--ink-dim)", maxWidth: 540, margin: "0 auto", fontSize: 16, lineHeight: 1.55 }}>
-          Tecnologia medica suave, IA empatica y una experiencia que los ninos aman usar.
+        <p className="text-ink-dim max-w-[540px] mx-auto text-base leading-relaxed">
+          Tecnología médica suave, IA empática y una experiencia que los niños aman usar.
         </p>
       </div>
 
       <div
-        style={{
-          display: "grid",
-          gap: 20,
-          gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))"
-        }}
+        className="grid gap-5"
+        style={{ gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}
       >
-        <FeatureCard
-          delay={0.05}
-          accent="#B8A4FF"
-          icon={<IconHeart size={22} />}
+        <FeatureCard delay={0.05} accent="#B8A4FF" icon={<IconHeart size={22} />}
           title="Monitoreo continuo"
-          desc="HRV, ritmo cardiaco y temperatura en tiempo real. Sin que el nino lo note."
-        />
-        <FeatureCard
-          delay={0.1}
-          accent="#A8E6CF"
-          icon={<IconBrain size={22} />}
-          title="IA empatica"
-          desc="Detecta patrones de ansiedad y recomienda la actividad adecuada a cada edad."
-        />
-        <FeatureCard
-          delay={0.15}
-          accent="#FFB4A2"
-          icon={<IconWind size={22} />}
-          title="Respiracion guiada"
-          desc="Ejercicios animados que los ninos siguen con una mascota. Calman en 2 minutos."
-        />
-        <FeatureCard
-          delay={0.2}
-          accent="#F4A6C0"
-          icon={<IconBell size={22} />}
+          desc="HRV, ritmo cardíaco y temperatura en tiempo real. Sin que el niño lo note." />
+        <FeatureCard delay={0.1} accent="#A8E6CF" icon={<IconBrain size={22} />}
+          title="IA empática"
+          desc="Detecta patrones de ansiedad y recomienda la actividad adecuada a cada edad." />
+        <FeatureCard delay={0.15} accent="#FFB4A2" icon={<IconWind size={22} />}
+          title="Respiración guiada"
+          desc="Ejercicios animados que los niños siguen con una mascota. Calman en 2 minutos." />
+        <FeatureCard delay={0.2} accent="#F4A6C0" icon={<IconBell size={22} />}
           title="Alertas para padres"
-          desc="Avisos discretos cuando tu hijo necesita atencion, no para vigilarlo: para ayudarlo."
-        />
-        <FeatureCard
-          delay={0.25}
-          accent="#B8A4FF"
-          icon={<IconShield size={22} />}
+          desc="Avisos discretos cuando tu hijo necesita atención, no para vigilarlo: para ayudarlo." />
+        <FeatureCard delay={0.25} accent="#B8A4FF" icon={<IconShield size={22} />}
           title="Privacidad total"
-          desc="Los datos se quedan contigo. Cifrado de extremo a extremo. Sin venta a terceros."
-        />
-        <FeatureCard
-          delay={0.3}
-          accent="#A8E6CF"
-          icon={<IconSparkles size={22} />}
-          title="Mini-juegos y musica"
-          desc="Herramientas de regulacion emocional que parecen juego. Disenadas con psicologas."
-        />
+          desc="Los datos se quedan contigo. Cifrado de extremo a extremo. Sin venta a terceros." />
+        <FeatureCard delay={0.3} accent="#A8E6CF" icon={<IconSparkles size={22} />}
+          title="Mini-juegos y música"
+          desc="Herramientas de regulación emocional que parecen juego. Diseñadas con psicólogas." />
       </div>
     </div>
   </section>
 );
 
+// ─── BraceletShowcase ─────────────────────────────────────────────────────────
 const BraceletShowcase = () => (
-  <section id="producto" style={{ padding: "100px 32px", position: "relative", overflow: "hidden" }}>
+  <section id="producto" className="py-20 sm:py-28 px-6 sm:px-8 relative overflow-hidden">
     <div
+      className="absolute inset-0 pointer-events-none"
       style={{
-        position: "absolute",
-        inset: 0,
-        background: "radial-gradient(ellipse at 30% 50%, rgba(184,164,255,0.08), transparent 60%)",
-        pointerEvents: "none"
+        background:
+          "radial-gradient(ellipse 50% 60% at 25% 50%, rgba(184,164,255,0.10), transparent 60%)",
       }}
     />
-    <div
-      style={{
-        maxWidth: 1160,
-        margin: "0 auto",
-        display: "grid",
-        gap: 60,
-        gridTemplateColumns: "minmax(300px, 1fr) minmax(300px, 1fr)",
-        alignItems: "center"
-      }}
-    >
+    <div className="max-w-[1160px] mx-auto grid gap-12 lg:gap-16 lg:grid-cols-2 items-center relative">
       <div>
         <SectionLabel>La pulsera</SectionLabel>
         <h2
-          style={{
-            fontFamily: "Fraunces, serif",
-            fontSize: "clamp(36px, 4.5vw, 52px)",
-            fontWeight: 500,
-            margin: "0 0 20px",
-            lineHeight: 1.1,
-            letterSpacing: "-0.02em"
-          }}
+          className="font-display font-medium m-0 mb-5 leading-[1.1]"
+          style={{ fontSize: "clamp(36px, 4.5vw, 52px)", letterSpacing: "-0.02em" }}
         >
-          Ligera. Suave. <em style={{ color: "var(--ink-muted)" }}>Olvidate de que esta ahi.</em>
+          Ligera. Suave. <em className="text-ink-muted">Olvidate de que está ahí.</em>
         </h2>
-        <p style={{ color: "var(--ink-dim)", fontSize: 16, lineHeight: 1.65, marginBottom: 28 }}>
-          Silicona medica hipoalergenica en tres colores. Bateria de 7 dias. Resistente al agua.
-          Disenada para munecas desde los 5 anos.
+        <p className="text-ink-dim text-base leading-relaxed mb-7">
+          Silicona médica hipoalergénica en tres colores. Batería de 7 días. Resistente al agua.
+          Diseñada para muñecas desde los 5 años.
         </p>
-        <div style={{ display: "flex", gap: 12, marginBottom: 28 }}>
+
+        <div className="flex gap-3 mb-7 flex-wrap">
           {[
             { c: "#B8A4FF", name: "Lavanda" },
             { c: "#A8E6CF", name: "Menta" },
-            { c: "#FFB4A2", name: "Coral" }
+            { c: "#FFB4A2", name: "Coral" },
           ].map((tone) => (
             <div
               key={tone.c}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "8px 14px 8px 10px",
-                border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: 999,
-                background: "rgba(255,255,255,0.03)",
-                fontSize: 13,
-                color: "var(--ink-muted)"
-              }}
+              className="inline-flex items-center gap-2 pl-2.5 pr-3.5 py-2 border border-white/10 rounded-full bg-white/[0.03] text-[13px] text-ink-muted"
             >
               <span
-                style={{
-                  width: 14,
-                  height: 14,
-                  borderRadius: 7,
-                  background: tone.c,
-                  boxShadow: `0 0 10px ${tone.c}55`
-                }}
+                className="w-3.5 h-3.5 rounded-full"
+                style={{ background: tone.c, boxShadow: `0 0 10px ${tone.c}55` }}
               />
               {tone.name}
             </div>
           ))}
         </div>
-        <div style={{ display: "flex", gap: 32, fontSize: 13, color: "var(--ink-dim)" }}>
-          <div>
-            <div style={{ fontSize: 24, color: "var(--ink)", fontWeight: 600, marginBottom: 2 }}>7d</div>
-            Bateria
-          </div>
-          <div>
-            <div style={{ fontSize: 24, color: "var(--ink)", fontWeight: 600, marginBottom: 2 }}>18g</div>
-            Peso
-          </div>
-          <div>
-            <div style={{ fontSize: 24, color: "var(--ink)", fontWeight: 600, marginBottom: 2 }}>IP68</div>
-            Al agua
-          </div>
+
+        <div className="flex gap-8 text-[13px] text-ink-dim">
+          {[
+            ["7d", "Batería"],
+            ["18g", "Peso"],
+            ["IP68", "Al agua"],
+          ].map(([num, label]) => (
+            <div key={label}>
+              <div className="font-display text-2xl font-medium text-ink mb-0.5">{num}</div>
+              {label}
+            </div>
+          ))}
         </div>
       </div>
-      <div style={{ display: "flex", justifyContent: "center" }}>
+
+      <div className="flex justify-center">
         <Bracelet size={420} tone="lavender" />
       </div>
     </div>
   </section>
 );
 
+// ─── HowItWorks ───────────────────────────────────────────────────────────────
 const HowItWorks = () => {
   const steps = [
     {
-      n: "01",
-      title: "La pulsera escucha",
-      desc: "Sensores biometricos detectan signos tempranos de ansiedad en tu hijo.",
-      icon: <IconWatch size={20} />,
-      color: "#B8A4FF"
+      n: "01", title: "La pulsera escucha",
+      desc: "Sensores biométricos detectan signos tempranos de ansiedad en tu hijo.",
+      icon: <IconWatch size={20} />, color: "#B8A4FF",
     },
     {
-      n: "02",
-      title: "La IA entiende",
+      n: "02", title: "La IA entiende",
       desc: "Patrones de HRV + contexto de la hora y actividad se traducen en un nivel de calma.",
-      icon: <IconBrain size={20} />,
-      color: "#A8E6CF"
+      icon: <IconBrain size={20} />, color: "#A8E6CF",
     },
     {
-      n: "03",
-      title: "Tu hijo se calma",
+      n: "03", title: "Tu hijo se calma",
       desc: "La pulsera se prende una luz suave y sugiere un ejercicio de respiración o un minijuego.",
-      icon: <IconWind size={20} />,
-      color: "#FFB4A2"
+      icon: <IconWind size={20} />, color: "#FFB4A2",
     },
     {
-      n: "04",
-      title: "Tu te enteras",
+      n: "04", title: "Tu te enteras",
       desc: "Un resumen claro en el dashboard. Sin alarmas innecesarias, solo lo importante.",
-      icon: <IconSmartphone size={20} />,
-      color: "#F4A6C0"
-    }
+      icon: <IconSmartphone size={20} />, color: "#F4A6C0",
+    },
   ];
   return (
-    <section id="how-it-works" style={{ padding: "120px 32px", position: "relative" }}>
-      <div style={{ maxWidth: 1160, margin: "0 auto" }}>
-        <div style={{ textAlign: "center", marginBottom: 72 }}>
-          <SectionLabel>Como funciona</SectionLabel>
+    <section id="how-it-works" className="py-24 sm:py-32 px-6 sm:px-8 relative">
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(ellipse 55% 55% at 75% 50%, rgba(168,230,207,0.08), transparent 65%)",
+        }}
+      />
+      <div className="max-w-[1160px] mx-auto relative">
+        <div className="text-center mb-16 sm:mb-20">
+          <SectionLabel>Cómo funciona</SectionLabel>
           <h2
-            style={{
-              fontFamily: "Fraunces, serif",
-              fontSize: "clamp(36px, 5vw, 56px)",
-              fontWeight: 500,
-              margin: "0 auto 16px",
-              maxWidth: 700,
-              lineHeight: 1.1,
-              letterSpacing: "-0.02em"
-            }}
+            className="font-display font-medium m-0 mb-4 mx-auto max-w-[700px] leading-[1.1]"
+            style={{ fontSize: "clamp(36px, 5vw, 56px)", letterSpacing: "-0.02em" }}
           >
             Cuatro pasos. <GradientText>Un momento de calma.</GradientText>
           </h2>
         </div>
 
-        <div style={{ display: "grid", gap: 16 }}>
+        <div className="grid gap-4">
           {steps.map((step) => (
-            <Card
+            <div
               key={step.n}
-              style={{
-                padding: 28,
-                display: "grid",
-                gridTemplateColumns: "80px 44px 1fr auto",
-                alignItems: "center",
-                gap: 24
-              }}
+              className="card-elevated p-6 sm:p-7 grid items-center gap-5 sm:gap-6 grid-cols-[60px_44px_1fr_auto] sm:grid-cols-[80px_44px_1fr_auto] hover:-translate-y-0.5 transition-transform"
+              style={{ "--card-glow": `${step.color}22` }}
             >
               <div
-                style={{
-                  fontFamily: "Fraunces, serif",
-                  fontSize: 36,
-                  fontWeight: 400,
-                  fontStyle: "italic",
-                  color: step.color,
-                  opacity: 0.55
-                }}
+                className="font-display italic font-normal"
+                style={{ fontSize: "clamp(28px, 3vw, 36px)", color: step.color, opacity: 0.55 }}
               >
                 {step.n}
               </div>
               <div
+                className="w-11 h-11 rounded-xl flex items-center justify-center"
                 style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 12,
                   background: `linear-gradient(135deg, ${step.color}30, ${step.color}08)`,
                   border: `1px solid ${step.color}30`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: step.color
+                  color: step.color,
                 }}
               >
                 {step.icon}
               </div>
               <div>
-                <h3 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 600, letterSpacing: -0.2 }}>
+                <h3 className="m-0 mb-1 text-base sm:text-lg font-semibold tracking-tight">
                   {step.title}
                 </h3>
-                <p style={{ margin: 0, color: "var(--ink-dim)", fontSize: 14, lineHeight: 1.5 }}>{step.desc}</p>
+                <p className="m-0 text-ink-dim text-[13px] sm:text-sm leading-relaxed">{step.desc}</p>
               </div>
-              <IconChevronRight size={18} style={{ color: "var(--ink-faint)" }} />
-            </Card>
+              <IconChevronRight size={18} className="text-ink-faint" />
+            </div>
           ))}
         </div>
       </div>
@@ -403,88 +306,70 @@ const HowItWorks = () => {
   );
 };
 
+// ─── Testimonials ─────────────────────────────────────────────────────────────
 const Testimonials = () => {
   const quotes = [
     {
       q: "Mi hijo pasó de tener crisis cada semana a manejarlas solo con los ejercicios. Ha sido transformador.",
-      name: "Marcela R.",
-      role: "Mamá de Simón, 10 años",
-      color: "#B8A4FF"
+      name: "Marcela R.", role: "Mamá de Simón, 10 años", color: "#B8A4FF",
     },
     {
-      q: "Como pediatra, lo recomiendo. Los datos de HRV son consistentes y los ejercicios estan bien disenados.",
-      name: "Dr. Andres Luna",
-      role: "Pediatra, CDMX",
-      color: "#A8E6CF"
+      q: "Como pediatra, lo recomiendo. Los datos de HRV son consistentes y los ejercicios están bien diseñados.",
+      name: "Dr. Andrés Luna", role: "Pediatra, CDMX", color: "#A8E6CF",
     },
     {
       q: "Lo mejor: no se siente invasiva. Mi hijo piensa que es un reloj guay y yo tengo tranquilidad.",
-      name: "Pablo M.",
-      role: "Papa de Mateo, 10 anos",
-      color: "#FFB4A2"
-    }
+      name: "Pablo M.", role: "Papá de Mateo, 10 años", color: "#FFB4A2",
+    },
   ];
   return (
-    <section id="testimonials" style={{ padding: "120px 32px", position: "relative" }}>
-      <div style={{ maxWidth: 1160, margin: "0 auto" }}>
-        <div style={{ textAlign: "center", marginBottom: 60 }}>
+    <section id="testimonials" className="py-24 sm:py-32 px-6 sm:px-8 relative">
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(ellipse 60% 50% at 40% 30%, rgba(244,166,192,0.08), transparent 65%)",
+        }}
+      />
+      <div className="max-w-[1160px] mx-auto relative">
+        <div className="text-center mb-14">
           <SectionLabel>Familias</SectionLabel>
           <h2
-            style={{
-              fontFamily: "Fraunces, serif",
-              fontSize: "clamp(36px, 5vw, 56px)",
-              fontWeight: 500,
-              margin: "0 auto 16px",
-              maxWidth: 720,
-              lineHeight: 1.1,
-              letterSpacing: "-0.02em"
-            }}
+            className="font-display font-medium m-0 mb-4 mx-auto max-w-[720px] leading-[1.1]"
+            style={{ fontSize: "clamp(36px, 5vw, 56px)", letterSpacing: "-0.02em" }}
           >
-            Lo que dicen quienes ya <em style={{ color: "var(--ink-muted)" }}>duermen mejor</em>.
+            Lo que dicen quienes ya <em className="text-ink-muted">duermen mejor</em>.
           </h2>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
+
+        <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
           {quotes.map((item, index) => (
-            <Card key={index} style={{ padding: 28 }}>
-              <div style={{ display: "flex", gap: 3, marginBottom: 16 }}>
+            <div
+              key={index}
+              className="card-elevated p-7 hover:-translate-y-1 transition-transform"
+              style={{ "--card-glow": `${item.color}33` }}
+            >
+              <div className="flex gap-0.5 mb-4">
                 {[0, 1, 2, 3, 4].map((star) => (
                   <IconStar key={star} size={14} style={{ fill: "#F5D06F", color: "#F5D06F" }} />
                 ))}
               </div>
-              <p
-                style={{
-                  fontFamily: "Fraunces, serif",
-                  fontSize: 19,
-                  lineHeight: 1.45,
-                  fontWeight: 400,
-                  margin: "0 0 24px",
-                  color: "var(--ink)"
-                }}
-              >
-                &quot;{item.q}&quot;
+              <p className="font-display text-[19px] leading-snug font-normal m-0 mb-6 text-ink">
+                &ldquo;{item.q}&rdquo;
               </p>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
+              <div className="flex items-center gap-3 pt-4 border-t border-line">
                 <div
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 18,
-                    background: `linear-gradient(135deg, ${item.color}, ${item.color}55)`,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontWeight: 600,
-                    color: "#0A0A1A"
-                  }}
+                  className="w-9 h-9 rounded-full flex items-center justify-center font-semibold text-[#0A0A1A]"
+                  style={{ background: `linear-gradient(135deg, ${item.color}, ${item.color}55)` }}
                 >
                   {item.name[0]}
                 </div>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{item.name}</div>
-                  <div style={{ fontSize: 12, color: "var(--ink-dim)" }}>{item.role}</div>
+                  <div className="text-sm font-semibold">{item.name}</div>
+                  <div className="text-xs text-ink-dim">{item.role}</div>
                 </div>
               </div>
-            </Card>
+            </div>
           ))}
         </div>
       </div>
@@ -492,48 +377,35 @@ const Testimonials = () => {
   );
 };
 
+// ─── FinalCTA ─────────────────────────────────────────────────────────────────
 const FinalCTA = ({ onSignUp, onTalk }) => (
-  <section id="pricing" style={{ padding: "100px 32px 140px", position: "relative" }}>
+  <section id="pricing" className="py-24 sm:py-28 px-6 sm:px-8 relative">
     <div
+      className="max-w-[960px] mx-auto relative rounded-[32px] overflow-hidden py-16 sm:py-20 px-6 sm:px-8 text-center"
       style={{
-        maxWidth: 960,
-        margin: "0 auto",
-        position: "relative",
-        borderRadius: 32,
-        overflow: "hidden",
-        padding: "72px 32px",
-        textAlign: "center",
-        background: "linear-gradient(135deg, rgba(184,164,255,0.12), rgba(168,230,207,0.08) 50%, rgba(255,180,162,0.12))",
+        background:
+          "linear-gradient(135deg, rgba(184,164,255,0.14), rgba(168,230,207,0.08) 50%, rgba(255,180,162,0.14))",
         border: "1px solid rgba(255,255,255,0.1)",
-        backdropFilter: "blur(20px)"
+        backdropFilter: "blur(20px)",
+        boxShadow:
+          "0 32px 80px -20px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 120px -20px rgba(184,164,255,0.4)",
       }}
     >
       <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background: "radial-gradient(ellipse at center, rgba(184,164,255,0.2), transparent 70%)",
-          pointerEvents: "none"
-        }}
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: "radial-gradient(ellipse at center, rgba(184,164,255,0.2), transparent 70%)" }}
       />
-      <div style={{ position: "relative" }}>
+      <div className="relative">
         <h2
-          style={{
-            fontFamily: "Fraunces, serif",
-            fontSize: "clamp(36px, 5vw, 56px)",
-            fontWeight: 500,
-            margin: "0 auto 18px",
-            maxWidth: 620,
-            lineHeight: 1.1,
-            letterSpacing: "-0.02em"
-          }}
+          className="font-display font-medium m-0 mb-4 mx-auto max-w-[620px] leading-[1.1]"
+          style={{ fontSize: "clamp(36px, 5vw, 56px)", letterSpacing: "-0.02em" }}
         >
-          Dale a tu hijo la <GradientText>herramienta que tu no tuviste</GradientText>.
+          Dale a tu hijo la <GradientText>herramienta que tú no tuviste</GradientText>.
         </h2>
-        <p style={{ color: "var(--ink-dim)", fontSize: 16, lineHeight: 1.55, maxWidth: 480, margin: "0 auto 32px" }}>
-          30 dias de prueba. Sin compromiso. Incluye pulsera, app y sesion inicial con psicologa.
+        <p className="text-ink-dim text-base leading-relaxed max-w-[480px] mx-auto mb-8">
+          30 días de prueba. Sin compromiso. Incluye pulsera, app y sesión inicial con psicóloga.
         </p>
-        <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+        <div className="flex gap-3 justify-center flex-wrap">
           <Button size="lg" onClick={onSignUp}>
             Empezar prueba gratis <IconArrowRight size={16} />
           </Button>
@@ -541,55 +413,39 @@ const FinalCTA = ({ onSignUp, onTalk }) => (
             Hablar con una experta
           </Button>
         </div>
-        <div style={{ marginTop: 24, fontSize: 12, color: "var(--ink-faint)" }}>Envio en 48h - Garantia de 90 dias</div>
+        <div className="mt-6 text-xs text-ink-faint">Envío en 48h · Garantía de 90 días</div>
       </div>
     </div>
   </section>
 );
 
+// ─── Footer ───────────────────────────────────────────────────────────────────
 const Footer = () => (
-  <footer style={{ padding: "40px 32px 60px", borderTop: "1px solid var(--border)" }}>
-    <div
-      style={{
-        maxWidth: 1160,
-        margin: "0 auto",
-        display: "flex",
-        justifyContent: "space-between",
-        flexWrap: "wrap",
-        gap: 20,
-        fontSize: 13,
-        color: "var(--ink-dim)"
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+  <footer className="py-10 px-6 sm:px-8 pb-16 border-t border-line">
+    <div className="max-w-[1160px] mx-auto flex justify-between flex-wrap gap-5 text-[13px] text-ink-dim">
+      <div className="flex items-center gap-2.5">
         <div
-          style={{
-            width: 22,
-            height: 22,
-            borderRadius: 6,
-            background: "linear-gradient(135deg, #B8A4FF, #A8E6CF)"
-          }}
+          className="w-[22px] h-[22px] rounded-md"
+          style={{ background: "linear-gradient(135deg, #B8A4FF, #A8E6CF)" }}
         />
-        <span style={{ color: "var(--ink)", fontWeight: 600 }}>CalmBand</span>
-        <span>(c) 2025</span>
+        <span className="text-ink font-semibold">CalmBand</span>
+        <span>© 2026</span>
       </div>
-      <div style={{ display: "flex", gap: 24 }}>
-        <a href="#precios" style={{ color: "inherit", textDecoration: "none" }}>Privacidad</a>
-        <a href="#precios" style={{ color: "inherit", textDecoration: "none" }}>Terminos</a>
-        <a href="#precios" style={{ color: "inherit", textDecoration: "none" }}>Soporte</a>
-        <a href="mailto:hola@calmband.com" style={{ color: "inherit", textDecoration: "none" }}>Contacto</a>
+      <div className="flex gap-6">
+        <a href="#precios" className="no-underline text-inherit hover:text-ink transition-colors">Privacidad</a>
+        <a href="#precios" className="no-underline text-inherit hover:text-ink transition-colors">Términos</a>
+        <a href="#precios" className="no-underline text-inherit hover:text-ink transition-colors">Soporte</a>
+        <a href="mailto:hola@calmband.com" className="no-underline text-inherit hover:text-ink transition-colors">Contacto</a>
       </div>
     </div>
   </footer>
 );
 
+// ─── Página completa ─────────────────────────────────────────────────────────
 const LandingPage = ({ onSignUp, onSignIn, onTalk }) => {
-  const handleSecondary = () => {
-    smoothScroll("features");
-  };
-
+  const handleSecondary = () => smoothScroll("features");
   return (
-    <div style={{ background: "var(--bg-2)", color: "var(--ink)" }}>
+    <div className="bg-[#0A0A1A] text-ink">
       <NavBar onSignIn={onSignIn} onSignUp={onSignUp} />
       <HeroGeometric onPrimary={onSignUp} onSecondary={handleSecondary} />
       <BraceletShowcase />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { GradientText, AmbientOrbs, Card } from "@/components/marketing/primitives";
 import { IconArrowLeft, IconSettings, IconUser, IconSun, IconMoon, IconSliders, IconCheck } from "@/components/marketing/icons";
@@ -19,12 +19,20 @@ export default function SettingsClient() {
   };
 
   // ── Modo claro/oscuro ──────────────────────────────────────────────────────
+  // Inicializa desde el data-theme actual (lo seteó el script anti-flicker del layout).
   const [darkMode, setDarkMode] = useState(true);
 
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    setDarkMode(document.documentElement.getAttribute("data-theme") !== "light");
+  }, []);
+
   const toggleDarkMode = () => {
-    setDarkMode(v => !v);
-    // En producción: cambiar el atributo data-theme del documento
-    // document.documentElement.setAttribute("data-theme", darkMode ? "light" : "dark");
+    const next = !darkMode;
+    setDarkMode(next);
+    const theme = next ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", theme);
+    try { localStorage.setItem("calmband-theme", theme); } catch {}
   };
 
   // ── Datos del usuario ──────────────────────────────────────────────────────
@@ -40,7 +48,7 @@ export default function SettingsClient() {
 
   const inputStyle = {
     width: "100%", padding: "10px 14px", borderRadius: 10,
-    border: "1px solid var(--border)", background: "rgba(255,255,255,0.04)",
+    border: "1px solid var(--border)", background: "var(--surface)",
     color: "var(--ink)", fontSize: 14, fontFamily: "Inter, sans-serif",
     outline: "none", boxSizing: "border-box",
   };
@@ -51,12 +59,12 @@ export default function SettingsClient() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-2)", color: "var(--ink)", position: "relative" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--ink)", position: "relative" }}>
       <AmbientOrbs/>
 
       <button onClick={() => router.push("/dashboard")} style={{
         position: "fixed", top: 28, left: 28, zIndex: 10,
-        background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)",
+        background: "var(--surface)", border: "1px solid var(--border)",
         borderRadius: 10, padding: "8px 14px", cursor: "pointer",
         color: "var(--ink-muted)", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13,
       }}>
@@ -83,7 +91,7 @@ export default function SettingsClient() {
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
             <div style={{
               width: 36, height: 36, borderRadius: 10,
-              background: "rgba(236,91,107,0.12)", border: "1px solid rgba(236,91,107,0.25)",
+              background: "rgb(var(--danger-rgb) / 0.12)", border: "1px solid rgb(var(--danger-rgb) / 0.25)",
               color: "#EC5B6B", display: "flex", alignItems: "center", justifyContent: "center",
             }}><IconSliders size={16}/></div>
             <div>
@@ -101,7 +109,7 @@ export default function SettingsClient() {
             />
             <div style={{
               minWidth: 64, textAlign: "center", padding: "8px 12px", borderRadius: 10,
-              background: "rgba(236,91,107,0.1)", border: "1px solid rgba(236,91,107,0.25)",
+              background: "rgb(var(--danger-rgb) / 0.1)", border: "1px solid rgb(var(--danger-rgb) / 0.25)",
               fontSize: 20, fontWeight: 700, color: "#EC5B6B",
             }}>{baseBpm}</div>
           </div>
@@ -113,8 +121,8 @@ export default function SettingsClient() {
             onClick={saveBpm}
             style={{
               marginTop: 16, padding: "9px 20px", borderRadius: 10,
-              background: bpmSaved ? "rgba(94,220,154,0.2)" : "rgba(236,91,107,0.15)",
-              border: `1px solid ${bpmSaved ? "rgba(94,220,154,0.4)" : "rgba(236,91,107,0.3)"}`,
+              background: bpmSaved ? "rgb(var(--calm-rgb) / 0.2)" : "rgb(var(--danger-rgb) / 0.15)",
+              border: `1px solid ${bpmSaved ? "rgb(var(--calm-rgb) / 0.4)" : "rgb(var(--danger-rgb) / 0.3)"}`,
               color: bpmSaved ? "#5EDC9A" : "#EC5B6B",
               fontSize: 13, fontWeight: 600, cursor: "pointer",
               display: "inline-flex", alignItems: "center", gap: 6,
@@ -148,8 +156,8 @@ export default function SettingsClient() {
               onClick={toggleDarkMode}
               style={{
                 width: 52, height: 28, borderRadius: 14, cursor: "pointer",
-                border: "1px solid rgba(255,255,255,0.1)",
-                background: darkMode ? "#B8A4FF" : "rgba(255,255,255,0.15)",
+                border: "1px solid var(--border)",
+                background: darkMode ? "var(--brand)" : "var(--surface-strong)",
                 position: "relative", transition: "background 0.3s",
               }}
             >
@@ -163,8 +171,8 @@ export default function SettingsClient() {
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>
                 {darkMode
-                  ? <IconMoon size={10} style={{ color: "#B8A4FF" }}/>
-                  : <IconSun size={10} style={{ color: "#F5D06F" }}/>
+                  ? <IconMoon size={10} style={{ color: "var(--brand)" }}/>
+                  : <IconSun size={10} style={{ color: "var(--attention)" }}/>
                 }
               </div>
             </button>
@@ -221,9 +229,9 @@ export default function SettingsClient() {
             style={{
               padding: "10px 22px", borderRadius: 10,
               background: profileSaved
-                ? "rgba(94,220,154,0.2)"
+                ? "rgb(var(--calm-rgb) / 0.2)"
                 : "linear-gradient(135deg, rgba(184,164,255,0.2), rgba(184,164,255,0.08))",
-              border: `1px solid ${profileSaved ? "rgba(94,220,154,0.4)" : "rgba(184,164,255,0.35)"}`,
+              border: `1px solid ${profileSaved ? "rgb(var(--calm-rgb) / 0.4)" : "rgba(184,164,255,0.35)"}`,
               color: profileSaved ? "#5EDC9A" : "#D4C5FF",
               fontSize: 13, fontWeight: 600, cursor: "pointer",
               display: "inline-flex", alignItems: "center", gap: 6,
