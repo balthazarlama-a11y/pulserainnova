@@ -2,12 +2,9 @@ import { NextResponse } from "next/server";
 
 const NVIDIA_API_URL = "https://integrate.api.nvidia.com/v1/chat/completions";
 
-// nvidia/llama-3.1-nemotron-nano-8b-v1: modelo propio de NVIDIA, ~1-2s de respuesta.
-// Por qué no meta/*: en mayo 2026 los modelos meta/llama-3.* en la free tier de
-// build.nvidia.com cuelgan (sin 429, sin error — la conexión queda viva 25s+ y
-// el cliente time-outea). Los modelos nvidia/* siguen respondiendo normalmente.
-// Override con NVIDIA_MODEL en .env.local si querés probar otro.
-const MODEL = process.env.NVIDIA_MODEL || "nvidia/llama-3.1-nemotron-nano-8b-v1";
+// meta/llama-3.2-3b-instruct: modelo 3B, ~1-3s de respuesta, ideal para JSON corto.
+// Override con NVIDIA_MODEL en .env.local si querés probar otro tamaño.
+const MODEL = process.env.NVIDIA_MODEL || "meta/llama-3.2-3b-instruct";
 
 // ─── Extrae el primer objeto JSON del texto del LLM ───────────────────────────
 function extractJSON(text) {
@@ -65,12 +62,9 @@ export async function POST(request) {
 
   const { system, user } = buildPrompt({ stress, bpm, bpmResting, stressKey, childName, childAge });
 
-  // ── Timeout manual 45s ───────────────────────────────────────────────────
-  // En mayo 2026 NIM free tier está saturado: el nemotron-nano-8b tarda
-  // ~15-25s para 200-300 tokens. 45s nos da margen sin que el cliente
-  // sufra un wait infinito.
+  // ── Timeout manual 20s (modelo 3B responde en ~1-3s normalmente) ─────────
   const controller = new AbortController();
-  const timeoutId  = setTimeout(() => controller.abort(), 45000);
+  const timeoutId  = setTimeout(() => controller.abort(), 20000);
 
   let nvidiaRes;
   try {
@@ -87,14 +81,14 @@ export async function POST(request) {
           { role: "user",   content: user   },
         ],
         temperature: 0.5,
-        max_tokens: 260,   // ajustado para terminar dentro del timeout de 45s
+        max_tokens: 350,   // 3 recomendaciones cortas caben en ~280 tokens
       }),
       signal: controller.signal,
     });
   } catch (err) {
     clearTimeout(timeoutId);
     const msg = err.name === "AbortError"
-      ? `Timeout (45s) — modelo: ${MODEL}`
+      ? `Timeout (20s) — modelo: ${MODEL}`
       : `Error de red: ${err.message}`;
     console.error("[recommendations]", msg);
     return NextResponse.json({ error: msg, fallback: true }, { status: 502 });
