@@ -576,15 +576,57 @@ export default function DashboardClient({ user, profile }) {
   const [baseStress, setBaseStress] = useState(35);
   const [baseHourlyData, setBaseHourlyData] = useState(null);
   const [baseBpm, setBaseBpm] = useState(72);
-  const [wifiStatus] = useState("online");
+  const [wifiStatus, setWifiStatus] = useState("offline");
   const [greeting, setGreeting] = useState("Hola");
+  const lastHeartbeatRef = useRef(Date.now());
 
   useEffect(() => {
     setBaseStress(getCurrentStress());
     setBaseHourlyData(generate24hHistory());
     const h = new Date().getHours();
     setGreeting(h < 12 ? "Buenos días" : h < 19 ? "Buenas tardes" : "Buenas noches");
-  }, []);
+
+    // Supabase Realtime para la pulsera
+    const checkStatus = () => {
+      const isOnline = (Date.now() - lastHeartbeatRef.current) < 120000; // 2 minutos
+      setWifiStatus(isOnline ? "online" : "offline");
+    };
+
+    // Obtener último dato para iniciar
+    const fetchLastData = async () => {
+      const { data } = await supabase
+        .from('sesiones_biometria')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (data && data.timestamp) {
+        lastHeartbeatRef.current = new Date(data.timestamp).getTime();
+        checkStatus();
+        if (data.bpm) setBaseBpm(data.bpm);
+        if (data.nivel_calma) setBaseStress(100 - data.nivel_calma);
+      }
+    };
+    fetchLastData();
+
+    const interval = setInterval(checkStatus, 30000);
+
+    const channel = supabase
+      .channel('biometria-updates')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sesiones_biometria' }, (payload) => {
+        lastHeartbeatRef.current = Date.now();
+        setWifiStatus("online");
+        if (payload.new.bpm) setBaseBpm(payload.new.bpm);
+        if (payload.new.nivel_calma) setBaseStress(100 - payload.new.nivel_calma);
+      })
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
+  }, [supabase]);
 
   const simData = sim.active ? sim.getCurrentSimData() : null;
   const stress = sim.active ? simData.stress : baseStress;

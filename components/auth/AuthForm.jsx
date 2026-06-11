@@ -76,7 +76,8 @@ export default function AuthForm({ mode }) {
           password,
           options: {
             data: {
-              display_name: displayName
+              display_name: displayName,
+              rol: 'tutor'
             },
             emailRedirectTo: `${origin}/auth/callback`
           }
@@ -89,14 +90,7 @@ export default function AuthForm({ mode }) {
         }
 
         if (data?.session && data.user) {
-          await supabase.from("profiles").upsert({
-            id: data.user.id,
-            email,
-            display_name: displayName || null,
-            updated_at: new Date().toISOString()
-          });
-
-          finishRedirect("/dashboard");
+          finishRedirect("/onboarding");
           return;
         }
 
@@ -128,11 +122,7 @@ export default function AuthForm({ mode }) {
       }
 
       if (signInData?.user) {
-        await supabase.from("profiles").upsert({
-          id: signInData.user.id,
-          email: signInData.user.email,
-          updated_at: new Date().toISOString()
-        });
+        // Trigger de base de datos ya se asegura de que exista en usuarios.
       }
 
       finishRedirect("/dashboard");
@@ -150,48 +140,48 @@ export default function AuthForm({ mode }) {
           CalmBand
         </p>
         <h1 className="text-2xl font-semibold text-white">
-          {isSignUp ? "Create your account" : "Welcome back"}
+          {isSignUp ? "Crea tu cuenta" : "¡Hola de nuevo!"}
         </h1>
         <p className="text-sm text-slate-300">
           {isSignUp
-            ? "Sign up to access your dashboard."
-            : "Sign in to continue."}
+            ? "Regístrate para acceder a tu panel de control."
+            : "Inicia sesión para continuar."}
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {isSignUp && (
           <div className="space-y-2">
-            <Label htmlFor="displayName">Display name</Label>
+            <Label htmlFor="displayName">Nombre y Apellido</Label>
             <Input
               id="displayName"
               value={displayName}
               onChange={(event) => setDisplayName(event.target.value)}
-              placeholder="Calm caregiver"
+              placeholder="Ej. María Pérez"
               autoComplete="name"
             />
           </div>
         )}
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">Correo electrónico</Label>
           <Input
             id="email"
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="you@example.com"
+            placeholder="tucorreo@ejemplo.com"
             autoComplete="email"
             required
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">Contraseña</Label>
           <Input
             id="password"
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder="Minimum 6 characters"
+            placeholder="Mínimo 6 caracteres"
             autoComplete={isSignUp ? "new-password" : "current-password"}
             minLength={6}
             required
@@ -218,26 +208,26 @@ export default function AuthForm({ mode }) {
             onClick={handleResend}
             disabled={resendLoading}
           >
-            {resendLoading ? "Resending..." : "Resend confirmation email"}
+            {resendLoading ? "Enviando..." : "Reenviar correo de confirmación"}
           </Button>
         )}
 
         <Button type="submit" className="w-full" disabled={loading}>
           {loading
-            ? "Working..."
+            ? "Cargando..."
             : isSignUp
-            ? "Create account"
-            : "Sign in"}
+            ? "Crear cuenta"
+            : "Iniciar sesión"}
         </Button>
       </form>
 
       <div className="text-sm text-slate-400">
-        {isSignUp ? "Already have an account?" : "Need an account?"} {" "}
+        {isSignUp ? "¿Ya tienes una cuenta?" : "¿Necesitas una cuenta?"} {" "}
         <Link
           href={isSignUp ? "/sign-in" : "/sign-up"}
-          className="text-white"
+          className="text-white hover:underline"
         >
-          {isSignUp ? "Sign in" : "Sign up"}
+          {isSignUp ? "Inicia sesión" : "Regístrate"}
         </Link>
       </div>
     </Card>

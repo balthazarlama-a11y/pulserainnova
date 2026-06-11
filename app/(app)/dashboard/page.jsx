@@ -24,10 +24,16 @@ export default async function DashboardPage() {
   }
 
   const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, email, display_name, updated_at")
+    .from("usuarios")
+    .select("id, email, nombre, rol, colegio_id, created_at")
     .eq("id", userData.user.id)
     .maybeSingle();
 
-  return <DashboardClient user={userData.user} profile={profile} />;
+  // Mapeamos 'nombre' a 'display_name' para compatibilidad con componentes existentes
+  const mappedProfile = profile ? {
+    ...profile,
+    display_name: profile.nombre || userData.user.email.split("@")[0],
+  } : null;
+
+  return <DashboardClient user={userData.user} profile={mappedProfile} />;
 }

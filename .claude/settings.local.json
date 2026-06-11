@@ -3,7 +3,11 @@
     "allow": [
       "Bash(npx --no-install next build)",
       "Bash(python -c \"import playwright; print\\(playwright.__version__\\)\")",
-      "Bash(python *)"
+      "Bash(python *)",
+      "Bash(git push *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "mcp__claude_ai_Supabase__list_projects"
     ]
   }
 }

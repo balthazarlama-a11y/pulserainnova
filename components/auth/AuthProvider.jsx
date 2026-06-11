@@ -70,21 +70,47 @@ export function AuthProvider({ children }) {
     []
   );
   const [session, setSession] = useState(SIMULATION_ONLY ? SIMULATION_SESSION : null);
+  const [profile, setProfile] = useState(SIMULATION_ONLY ? SIMULATION_PROFILE : null);
   const [loading, setLoading] = useState(!SIMULATION_ONLY);
 
   useEffect(() => {
     if (SIMULATION_ONLY) return;
     let isMounted = true;
 
+    const fetchProfile = async (userId) => {
+      if (!userId) {
+        if (isMounted) setProfile(null);
+        return;
+      }
+      const { data } = await supabase
+        .from("usuarios")
+        .select("*")
+        .eq("id", userId)
+        .maybeSingle();
+      if (isMounted) setProfile(data);
+    };
+
     supabase.auth.getSession().then(({ data }) => {
       if (!isMounted) return;
       setSession(data.session);
-      setLoading(false);
+      if (data.session?.user) {
+        fetchProfile(data.session.user.id).then(() => {
+          if (isMounted) setLoading(false);
+        });
+      } else {
+        setLoading(false);
+      }
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event, nextSession) => {
+        if (!isMounted) return;
         setSession(nextSession);
+        if (nextSession?.user) {
+          fetchProfile(nextSession.user.id);
+        } else {
+          setProfile(null);
+        }
       }
     );
 
@@ -99,12 +125,14 @@ export function AuthProvider({ children }) {
         supabase: simulationSupabase,
         session: SIMULATION_SESSION,
         user: SIMULATION_USER,
+        profile: SIMULATION_PROFILE,
         loading: false
       }
     : {
         supabase,
         session,
         user: session?.user ?? null,
+        profile,
         loading
       };
 

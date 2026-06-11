@@ -1,9 +1,15 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
 export async function GET(request) {
   const requestUrl = new URL(request.url)
+  const code = requestUrl.searchParams.get('code')
   const next = requestUrl.searchParams.get('next') ?? '/dashboard'
 
-  // Mock callback — no code exchange needed, just redirect
+  if (code) {
+    const supabase = createClient()
+    await supabase.auth.exchangeCodeForSession(code)
+  }
+
   return NextResponse.redirect(new URL(next, request.url))
 }
