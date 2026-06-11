@@ -13,7 +13,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { GradientText, AmbientOrbs, Card } from "@/components/marketing/primitives";
+import { Card } from "@/components/marketing/primitives";
 import { IconArrowLeft, IconCalendar, IconActivity, IconBook, IconMusic, IconHeart, IconSun, IconWind } from "@/components/marketing/icons";
 import { CHILD_PROFILE } from "@/lib/mockData";
 
@@ -127,8 +127,7 @@ export default function ScheduleClient() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-2)", color: "var(--ink)", position: "relative" }}>
-      <AmbientOrbs/>
+    <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--ink)", position: "relative" }}>
 
       <button onClick={() => router.push("/dashboard")} style={{
         position: "fixed", top: 28, left: 28, zIndex: 10,
@@ -143,11 +142,11 @@ export default function ScheduleClient() {
 
         {/* Encabezado */}
         <div style={{ marginBottom: 28 }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, letterSpacing: 2, textTransform: "uppercase", color: "rgba(184,164,255,0.9)", marginBottom: 10 }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, letterSpacing: 2, textTransform: "uppercase", color: "var(--brand)", marginBottom: 10, fontWeight: 700 }}>
             <IconCalendar size={12}/> Horario Escolar
           </div>
-          <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 36, fontWeight: 500, margin: "0 0 6px", letterSpacing: "-0.02em" }}>
-            Semana de <GradientText>{CHILD_PROFILE.name}</GradientText>
+          <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 36, fontWeight: 700, margin: "0 0 6px", letterSpacing: "-0.02em" }}>
+            Semana de <span className="text-brand font-bold">{CHILD_PROFILE.name}</span>
           </h1>
           <p style={{ color: "var(--ink-dim)", fontSize: 14, margin: "0 0 4px" }}>
             Horario predeterminado de estudiante de primaria.
@@ -156,8 +155,8 @@ export default function ScheduleClient() {
           <div style={{
             display: "inline-flex", alignItems: "center", gap: 8, marginTop: 8,
             padding: "6px 12px", borderRadius: 8, fontSize: 12,
-            background: "rgba(184,164,255,0.08)", border: "1px solid rgba(184,164,255,0.2)",
-            color: "rgba(184,164,255,0.8)",
+            background: "rgba(42, 157, 143, 0.08)", border: "1px solid rgba(42, 157, 143, 0.2)",
+            color: "var(--brand)", fontWeight: 500
           }}>
             <IconActivity size={11}/>
             Próximamente: horario editable · cruzado con datos biométricos de la IA
@@ -227,12 +226,11 @@ export default function ScheduleClient() {
               style={{
                 display: "flex", alignItems: "center", gap: 14,
                 padding: "12px 16px", borderRadius: 12,
-                background: event.category === "sleep"
-                  ? "var(--surface)"
-                  : "var(--surface)",
-                border: `1px solid ${event.color}25`,
-                opacity: event.category === "sleep" ? 0.5 : 1,
+                background: "var(--surface)",
+                border: `1px solid ${event.color}40`,
+                opacity: event.category === "sleep" ? 0.7 : 1,
                 transition: "all 0.2s",
+                boxShadow: "0 2px 4px rgba(0,0,0,0.02)"
               }}
             >
               {/* Hora */}

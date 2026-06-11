@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { GradientText, AmbientOrbs } from "@/components/marketing/primitives";
 import { IconArrowLeft, IconWatch, IconCheck, IconRefresh, IconAlertTriangle } from "@/components/marketing/icons";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -80,12 +79,7 @@ const ScanRadar = ({ children }) => (
       }}
     />
     <div
-      className="relative w-[88px] h-[88px] rounded-full flex items-center justify-center text-brand"
-      style={{
-        background: "linear-gradient(135deg, #2a2035, #0f0a1f)",
-        border: "1px solid rgba(184,164,255,0.3)",
-        boxShadow: "0 0 40px rgba(184,164,255,0.4), inset 0 0 20px rgba(184,164,255,0.15)",
-      }}
+      className="relative w-[88px] h-[88px] rounded-full flex items-center justify-center text-brand bg-brand/10 border border-brand/20 shadow-sm"
     >
       {children}
     </div>
@@ -175,16 +169,11 @@ export default function PairingClient() {
   };
 
   return (
-    <div
-      className="min-h-screen text-ink relative overflow-hidden bg-bg"
-      style={{ "--aurora": "#B8A4FF" }}
-    >
-      <div className="aurora-layer animate-aurora-shift" aria-hidden/>
-      <AmbientOrbs/>
+    <div className="min-h-screen text-ink relative overflow-hidden bg-bg">
 
       <button
         onClick={() => step === "configure" ? setStep("found") : router.push("/dashboard")}
-        className="absolute top-7 left-7 z-[5] bg-white/[0.04] border border-line rounded-xl px-3.5 py-2 cursor-pointer text-ink-muted inline-flex items-center gap-1.5 text-[13px] hover:bg-white/[0.08] hover:border-white/15 transition"
+        className="absolute top-7 left-7 z-[5] bg-surface border border-line rounded-xl px-3.5 py-2 cursor-pointer text-ink inline-flex items-center gap-1.5 text-[13px] hover:bg-surface-elevated transition shadow-sm"
       >
         <IconArrowLeft size={14}/> Volver
       </button>
@@ -215,8 +204,8 @@ export default function PairingClient() {
                 <IconCheck size={40} stroke={2.5}/>
               </div>
             </div>
-            <h1 className="font-display font-medium m-0 mb-3 tracking-tight text-3xl sm:text-4xl">
-              ¡<GradientText>Conectado</GradientText>!
+            <h1 className="font-display font-medium m-0 mb-3 tracking-tight text-3xl sm:text-4xl text-brand">
+              ¡Conectado!
             </h1>
             <p className="text-ink-dim text-[15px]">
               La pulsera ha sido configurada exitosamente. Volviendo al panel…
@@ -257,7 +246,7 @@ export default function PairingClient() {
         )}
 
         {step === "configure" && (
-          <div className="card-elevated p-6 sm:p-8 space-y-6" style={{ "--card-glow": "rgba(184,164,255,0.25)", animation: "heroTextIn 0.3s forwards" }}>
+          <div className="card p-6 sm:p-8 space-y-6" style={{ animation: "heroTextIn 0.3s forwards" }}>
             <div>
               <h2 className="text-xl font-semibold mb-2">Configurar Pulsera</h2>
               <p className="text-sm text-ink-muted">Conecta la pulsera <span className="text-brand font-medium">{selectedDevice?.name}</span> a la red WiFi del colegio y asígnala a un niño.</p>
@@ -322,9 +311,9 @@ export default function PairingClient() {
               <IconWatch size={36}/>
             </ScanRadar>
             <h2 className="font-display font-medium m-0 mt-8 mb-2 tracking-tight text-2xl sm:text-3xl">
-              Configurando <GradientText>{selectedDevice?.name}</GradientText>…
+              Configurando <span className="text-brand font-semibold">{selectedDevice?.name}</span>…
             </h2>
-            <div className="card-elevated p-5 max-w-[420px] mx-auto mt-6" style={{ "--card-glow": "rgba(184,164,255,0.25)" }}>
+            <div className="card p-5 max-w-[420px] mx-auto mt-6">
               <div className="space-y-3">
                 {CONNECTION_PHASES.map((phase, i) => {
                   const done = i < phaseIndex;
@@ -372,12 +361,7 @@ export default function PairingClient() {
                     style={{ background: "radial-gradient(circle, rgba(184,164,255,0.4), transparent 65%)" }}
                   />
                   <div
-                    className="relative w-[88px] h-[88px] rounded-full flex items-center justify-center text-brand"
-                    style={{
-                      background: "linear-gradient(135deg, #2a2035, #0f0a1f)",
-                      border: "1px solid rgba(184,164,255,0.3)",
-                      boxShadow: "0 0 40px rgba(184,164,255,0.3), inset 0 0 20px rgba(184,164,255,0.1)",
-                    }}
+                    className="relative w-[88px] h-[88px] rounded-full flex items-center justify-center text-brand bg-brand/10 border border-brand/20 shadow-sm"
                   >
                     <IconWatch size={40}/>
                   </div>
@@ -391,10 +375,10 @@ export default function PairingClient() {
               </div>
               <h1 className="font-display font-medium m-0 mb-2.5 tracking-tight text-3xl sm:text-4xl">
                 {step === "scanning"
-                  ? <>Buscando tu <GradientText>pulsera</GradientText>…</>
+                  ? <>Buscando tu <span className="text-brand font-bold">pulsera</span>…</>
                   : step === "found"
-                  ? <>Encontramos <GradientText>{devices.length}</GradientText></>
-                  : <>Busca tu <GradientText>pulsera</GradientText></>
+                  ? <>Encontramos <span className="text-brand font-bold">{devices.length}</span></>
+                  : <>Busca tu <span className="text-brand font-bold">pulsera</span></>
                 }
               </h1>
               <p className="text-ink-dim text-sm leading-relaxed max-w-[380px] mx-auto">
@@ -440,10 +424,9 @@ export default function PairingClient() {
                 {devices.map((device, i) => (
                   <div
                     key={device.id}
-                    className="card-elevated p-4 sm:p-5 transition-all hover:-translate-y-0.5 cursor-pointer"
+                    className="card p-4 sm:p-5 transition-all hover:-translate-y-0.5 cursor-pointer"
                     onClick={() => handleSelectDevice(device)}
                     style={{
-                      "--card-glow": "rgba(184,164,255,0.22)",
                       animation: `heroTextIn 0.4s ${i * 0.1}s both`,
                     }}
                   >

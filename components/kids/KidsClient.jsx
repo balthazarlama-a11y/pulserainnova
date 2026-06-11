@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { stressState, AmbientOrbs } from "@/components/marketing/primitives";
+import { stressState } from "@/components/marketing/primitives";
 import { IconWind, IconGamepad, IconMusic, IconBook, IconArrowLeft, IconX, IconArrowRight, IconHeart, IconActivity } from "@/components/marketing/icons";
 import { CHILD_PROFILE, getCurrentStress, getStressKey } from "@/lib/mockData";
 import { useSimulation } from "@/lib/simulationContext";
@@ -684,29 +684,32 @@ const ZenGarden = ({ onClose, onComplete }) => {
 
 // Activity card
 const ActivityCard = ({ accent, icon, title, sub, recommended, onClick }) => (
-  <button onClick={onClick} style={{
-    position: "relative", padding: "24px 20px", borderRadius: 20,
-    background: `linear-gradient(180deg, ${accent}22, ${accent}08)`,
-    border: `1px solid ${accent}40`, color: "var(--ink)", cursor: "pointer",
-    textAlign: "center", transition: "transform 0.2s, box-shadow 0.2s",
-    fontFamily: "inherit", display: "flex", flexDirection: "column", alignItems: "center", gap: 12
-  }}>
+  <button onClick={onClick} className="card group" style={{
+    position: "relative", padding: "24px 20px", borderRadius: 16,
+    background: "#FFFFFF",
+    border: `2px solid ${accent}40`, color: "var(--ink)", cursor: "pointer",
+    textAlign: "center", transition: "transform 0.2s, box-shadow 0.2s, border-color 0.2s",
+    fontFamily: "inherit", display: "flex", flexDirection: "column", alignItems: "center", gap: 12,
+    boxShadow: "0 2px 8px rgba(0,0,0,0.04)"
+  }}
+  onMouseEnter={(e) => e.currentTarget.style.borderColor = accent}
+  onMouseLeave={(e) => e.currentTarget.style.borderColor = `${accent}40`}
+  >
     {recommended && (
       <div style={{
         position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)",
         padding: "4px 10px", borderRadius: 999, background: accent,
-        color: "#0A0A1A", fontSize: 10, fontWeight: 700, letterSpacing: 0.5
+        color: "#FFFFFF", fontSize: 10, fontWeight: 700, letterSpacing: 0.5
       }}>RECOMENDADO</div>
     )}
     <div style={{
       width: 56, height: 56, borderRadius: 16,
-      background: `linear-gradient(135deg, ${accent}, ${accent}aa)`,
-      color: "#0A0A1A", display: "flex", alignItems: "center", justifyContent: "center",
-      boxShadow: `0 6px 16px -4px ${accent}66`
+      background: `${accent}1A`,
+      color: accent, display: "flex", alignItems: "center", justifyContent: "center",
     }}>{icon}</div>
     <div>
-      <div style={{ fontFamily: "Fraunces, serif", fontSize: 22, fontWeight: 500, letterSpacing: -0.3, marginBottom: 2 }}>{title}</div>
-      <div style={{ fontSize: 12, color: "var(--ink-dim)" }}>{sub}</div>
+      <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: -0.3, marginBottom: 4 }}>{title}</div>
+      <div style={{ fontSize: 13, color: "var(--ink-muted)", fontWeight: 500 }}>{sub}</div>
     </div>
   </button>
 );
@@ -808,31 +811,30 @@ export default function KidsClient() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: `linear-gradient(180deg, ${state.hex}18 0%, #0A0A1A 60%)`,
+      background: "#FFFBF0",
       color: "var(--ink)", position: "relative", overflow: "hidden", transition: "background 0.6s"
     }}>
-      <AmbientOrbs/>
 
       <header style={{ position: "relative", zIndex: 2, padding: "24px 32px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <button onClick={() => router.push("/dashboard")} style={{
-          background: "rgba(255,255,255,0.05)", border: "1px solid var(--border)",
-          borderRadius: 10, padding: "8px 14px", cursor: "pointer",
-          color: "var(--ink-muted)", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13
+          background: "#FFFFFF", border: "1px solid var(--border)",
+          borderRadius: 8, padding: "8px 14px", cursor: "pointer",
+          color: "var(--ink)", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600
         }}>
           <IconArrowLeft size={14}/> Dashboard
         </button>
         <div style={{
           display: "inline-flex", alignItems: "center", gap: 10,
           padding: "8px 14px", borderRadius: 999,
-          background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)"
+          background: "#FFFFFF", border: "1px solid var(--border)"
         }}>
           <div style={{
             width: 24, height: 24, borderRadius: 12,
             background: CHILD_PROFILE.avatarGradient,
-            fontSize: 11, fontWeight: 700, color: "#2A0E16",
+            fontSize: 11, fontWeight: 700, color: "#FFFFFF",
             display: "flex", alignItems: "center", justifyContent: "center"
           }}>{CHILD_PROFILE.avatar}</div>
-          <span style={{ fontSize: 13 }}>{CHILD_PROFILE.name} · {CHILD_PROFILE.age} años</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>{CHILD_PROFILE.name} · {CHILD_PROFILE.age} años</span>
         </div>
       </header>
 
@@ -855,14 +857,17 @@ export default function KidsClient() {
           <CalmChar mood={mood} size={220}/>
         </div>
 
-        <div style={{ fontSize: 13, letterSpacing: 2, textTransform: "uppercase", color: state.hex, fontWeight: 500, marginBottom: 8 }}>
-          Hola {CHILD_PROFILE.name}
+        <div style={{ fontSize: 13, letterSpacing: 2, textTransform: "uppercase", color: state.hex, fontWeight: 700, marginBottom: 8 }}>
+          ¡Hola {CHILD_PROFILE.name}!
         </div>
-        <h1 style={{ fontFamily: "Fraunces, serif", fontSize: "clamp(32px, 5vw, 48px)", fontWeight: 500, margin: "0 auto 12px", maxWidth: 640, lineHeight: 1.1, letterSpacing: "-0.02em" }}>
-          {greeting}
+        <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: "clamp(32px, 5vw, 48px)", fontWeight: 700, margin: "0 auto 12px", maxWidth: 640, lineHeight: 1.1, letterSpacing: "-0.02em" }}>
+          {stress <= 30 && `${CHILD_PROFILE.name} está en calma`}
+          {stress > 30 && stress <= 55 && `${CHILD_PROFILE.name} está un poquito inquieto`}
+          {stress > 55 && stress <= 75 && "¿Necesitas un momento?"}
+          {stress > 75 && "Estoy aquí contigo"}
         </h1>
-        <p style={{ color: "var(--ink-dim)", fontSize: 16, maxWidth: 480, margin: "0 auto 40px", lineHeight: 1.55 }}>
-          {stress <= 30 && "Tu pulsera dice que estás muy tranquilo. ¡Sigue así!"}
+        <p style={{ color: "var(--ink-muted)", fontSize: 16, maxWidth: 480, margin: "0 auto 40px", lineHeight: 1.55 }}>
+          {stress <= 30 && "Estás en calma. ¡Sigue así!"}
           {stress > 30 && stress <= 55 && "Noto que estás un poquito inquieto. ¿Quieres calmarte conmigo?"}
           {stress > 55 && stress <= 75 && "Parece que algo te preocupa. Elige una actividad y respiremos juntos."}
           {stress > 75 && "Vamos paso a paso. Estás a salvo. Elige algo que te ayude ahora."}
@@ -883,47 +888,46 @@ export default function KidsClient() {
         </div>
 
         {/* Logros */}
-        <div style={{ marginTop: 40, padding: "18px 20px", borderRadius: 20, background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)" }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 12, padding: "10px 16px", borderRadius: 999, background: "rgba(255,255,255,0.03)", border: "1px solid var(--border)", marginBottom: 20 }}>
+        <div style={{ marginTop: 40, padding: "24px", borderRadius: 20, background: "#FFFFFF", border: "1px solid var(--border)", boxShadow: "0 2px 8px rgba(0,0,0,0.02)" }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 12, padding: "10px 16px", borderRadius: 999, background: "var(--bg)", border: "1px solid var(--border)", marginBottom: 20 }}>
             <div style={{ display: "flex", gap: 4 }}>
               {[1,2,3,4,5,6,7].map(d => (
                 <div key={d} style={{
                   width: 10, height: 10, borderRadius: 5,
-                  background: d <= CHILD_PROFILE.streakDays ? SEMANTIC_COLORS.attention : "rgba(255,255,255,0.1)",
-                  boxShadow: d <= CHILD_PROFILE.streakDays ? `0 0 6px ${SEMANTIC_COLORS.attention}88` : "none"
+                  background: d <= CHILD_PROFILE.streakDays ? SEMANTIC_COLORS.attention : "var(--border)",
                 }}/>
               ))}
             </div>
-            <div style={{ fontSize: 13, color: "var(--ink-muted)" }}>
-              <strong style={{ color: SEMANTIC_COLORS.attention }}>{CHILD_PROFILE.streakDays} días</strong> de racha
+            <div style={{ fontSize: 13, color: "var(--ink-muted)", fontWeight: 500 }}>
+              <strong style={{ color: "var(--ink)" }}>{CHILD_PROFILE.streakDays} días</strong> de racha
             </div>
           </div>
 
-          <div style={{ fontSize: 12, letterSpacing: 2, textTransform: "uppercase", color: "var(--ink-faint)", marginBottom: 12 }}>
+          <div style={{ fontSize: 12, letterSpacing: 1, textTransform: "uppercase", color: "var(--ink-dim)", fontWeight: 700, marginBottom: 16 }}>
             Medallas
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 8 }}>
             {[
-              { key: "breath", label: "Respiración completada", icon: "🌬️", color: SEMANTIC_COLORS.brand, active: earned.breath > 0 },
+              { key: "breath", label: "Respiración", icon: "🌬️", color: SEMANTIC_COLORS.brand, active: earned.breath > 0 },
               { key: "streak_3", label: "3 días seguidos", icon: "🔥", color: SEMANTIC_COLORS.attention, active: CHILD_PROFILE.streakDays >= 3 },
               { key: "first_game", label: "Primer juego", icon: "🌟", color: SEMANTIC_COLORS.calm, active: Object.values(earned).some(v => v > 0) },
             ].map((medal) => (
               <div key={medal.key} style={{
-                padding: "12px 14px", borderRadius: 14,
-                background: medal.active ? `${medal.color}14` : "rgba(255,255,255,0.02)",
-                border: medal.active ? `1px solid ${medal.color}35` : "1px solid rgba(255,255,255,0.05)",
-                display: "flex", alignItems: "center", gap: 10,
-                opacity: medal.active ? 1 : 0.5,
+                padding: "12px 14px", borderRadius: 12,
+                background: medal.active ? `${medal.color}14` : "var(--bg)",
+                border: medal.active ? `1px solid ${medal.color}40` : "1px solid var(--border)",
+                display: "flex", alignItems: "center", gap: 12,
+                opacity: medal.active ? 1 : 0.6,
                 filter: medal.active ? "none" : "grayscale(1)"
               }}>
                 <div style={{
-                  width: 36, height: 36, borderRadius: 12,
-                  background: medal.active ? `${medal.color}33` : "rgba(255,255,255,0.1)", color: medal.color,
+                  width: 36, height: 36, borderRadius: 10,
+                  background: medal.active ? `${medal.color}33` : "var(--border-strong)", color: medal.color,
                   display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18
                 }}>{medal.icon}</div>
                 <div style={{ textAlign: "left" }}>
-                  <div style={{ fontSize: 13, fontWeight: medal.active ? 600 : 400, color: medal.active ? medal.color : "var(--ink-faint)" }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: medal.active ? "var(--ink)" : "var(--ink-dim)" }}>
                     {medal.label}
                   </div>
                 </div>

@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -7,50 +7,92 @@
 /* ──────────────────────────────────────────────────────────────────────────
    CalmBand design tokens
    ─────────────────────────
-   - El tema por defecto es dark; light se activa via [data-theme="light"].
+   - El tema por defecto es light; dark se activa via [data-theme="dark"].
    - Acentos (brand/calm/attention/danger) viven como triplets RGB para que
      Tailwind pueda inyectar <alpha-value> en bg-brand/15 etc.
-   - Roles semánticos (bg, surface, text, border) abstraen el theme: los
-     componentes consumen tokens, no hex.
-   - El usuario puede setear data-theme="light" desde SettingsClient.
    ────────────────────────────────────────────────────────────────────────── */
 
 :root,
-:root[data-theme="dark"] {
-  color-scheme: dark;
+:root[data-theme="light"] {
+  color-scheme: light;
 
-  /* Acentos (idénticos en ambos temas: son identidad de marca) */
-  --brand-rgb: 184 164 255;     /* lavanda */
-  --calm-rgb: 94 220 154;       /* menta */
-  --attention-rgb: 245 208 111; /* ámbar */
-  --danger-rgb: 236 91 107;     /* coral */
+  /* Acentos de marca */
+  --brand-rgb: 42 157 143;       /* #2A9D8F - verde azulado */
+  --calm-rgb: 42 157 143;        /* #2A9D8F */
+  --attention-rgb: 217 164 50;   /* #D9A432 - ámbar cálido */
+  --danger-rgb: 220 77 85;       /* #DC4D55 - coral reservado */
+  
   --brand: rgb(var(--brand-rgb));
   --calm: rgb(var(--calm-rgb));
   --attention: rgb(var(--attention-rgb));
   --danger: rgb(var(--danger-rgb));
+  
   --mild: var(--attention);
   --moderate: var(--danger);
   --high: var(--danger);
 
-  /* Fondos (3 niveles) */
-  --bg: #0A0A1A;
-  --bg-2: #0A0A1A;             /* alias legacy */
-  --bg-elevated: #11102A;
+  /* Fondos */
+  --bg: #F8F7F5;
+  --bg-2: #F8F7F5;
+  --bg-elevated: #FFFFFF;
 
-  /* Surfaces (vidrio sobre fondo) */
-  --surface: rgba(255, 255, 255, 0.04);
-  --surface-elevated: rgba(255, 255, 255, 0.06);
-  --surface-strong: rgba(255, 255, 255, 0.10);
+  /* Surfaces */
+  --surface: rgba(0, 0, 0, 0.02);
+  --surface-elevated: rgba(0, 0, 0, 0.04);
+  --surface-strong: rgba(0, 0, 0, 0.08);
 
-  /* Texto — escalonado pero siempre por encima de WCAG AA sobre var(--bg).
-     Valores anteriores (0.72/0.56/0.36) daban ratios ~9/5.8/3, el faint quedaba
-     bajo AA. Subimos para garantizar legibilidad sin perder jerarquía. */
-  --ink-rgb: 247 244 255;
+  /* Texto */
+  --ink-rgb: 28 32 36;
   --ink: rgb(var(--ink-rgb));
-  --ink-muted: rgb(var(--ink-rgb) / 0.88);
-  --ink-dim: rgb(var(--ink-rgb) / 0.74);
-  --ink-faint: rgb(var(--ink-rgb) / 0.58);
-  --ink-on-accent: #0D0824;      /* texto sobre botones brand */
+  --ink-muted: rgb(var(--ink-rgb) / 0.85);
+  --ink-dim: rgb(var(--ink-rgb) / 0.60);
+  --ink-faint: rgb(var(--ink-rgb) / 0.40);
+  --ink-on-accent: #FFFFFF;
+
+  /* Bordes */
+  --border: #E5E5E3;
+  --border-strong: #D1D1CF;
+
+  /* Otros */
+  --focus-ring: rgb(var(--brand-rgb) / 0.45);
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Acentos de marca ajustados para dark mode */
+  --brand-rgb: 72 199 184;
+  --calm-rgb: 72 199 184;
+  --attention-rgb: 245 208 111;
+  --danger-rgb: 236 91 107;
+  
+  --brand: rgb(var(--brand-rgb));
+  --calm: rgb(var(--calm-rgb));
+  --attention: rgb(var(--attention-rgb));
+  --danger: rgb(var(--danger-rgb));
+  
+  --mild: var(--attention);
+  --moderate: var(--danger);
+  --high: var(--danger);
+
+  /* Fondos */
+  --bg: #111214;
+  --bg-2: #111214;
+  --bg-elevated: #191B1F;
+
+  /* Surfaces */
+  --surface: rgba(255, 255, 255, 0.04);
+  --surface-elevated: rgba(255, 255, 255, 0.08);
+  --surface-strong: rgba(255, 255, 255, 0.12);
+
+  /* Texto */
+  --ink-rgb: 247 248 250;
+  --ink: rgb(var(--ink-rgb));
+  --ink-muted: rgb(var(--ink-rgb) / 0.85);
+  --ink-dim: rgb(var(--ink-rgb) / 0.65);
+  --ink-faint: rgb(var(--ink-rgb) / 0.45);
+  --ink-on-accent: #0D0824;
 
   /* Bordes */
   --border: rgba(255, 255, 255, 0.08);
@@ -58,58 +100,7 @@
 
   /* Otros */
   --focus-ring: rgb(var(--brand-rgb) / 0.6);
-  --noise-opacity: 0.05;
-  --shadow-card:
-    inset 0 1px 0 rgba(255,255,255,0.06),
-    0 24px 48px -20px rgba(0,0,0,0.6),
-    0 0 0 1px rgba(255,255,255,0.05);
-}
-
-:root[data-theme="light"] {
-  color-scheme: light;
-
-  /* Acentos: los mismos hue pero ligeramente desaturados/oscurecidos
-     para que tengan contraste suficiente sobre fondo claro */
-  --brand-rgb: 122 96 220;       /* lavanda más profunda */
-  --calm-rgb: 42 168 108;        /* menta más oscura */
-  --attention-rgb: 198 142 31;   /* ámbar más profundo */
-  --danger-rgb: 199 58 76;       /* coral más profundo */
-  --brand: rgb(var(--brand-rgb));
-  --calm: rgb(var(--calm-rgb));
-  --attention: rgb(var(--attention-rgb));
-  --danger: rgb(var(--danger-rgb));
-  --mild: var(--attention);
-  --moderate: var(--danger);
-  --high: var(--danger);
-
-  /* Fondos crema cálida */
-  --bg: #F8F4ED;
-  --bg-2: #F8F4ED;
-  --bg-elevated: #FFFFFF;
-
-  /* Surfaces */
-  --surface: rgba(15, 12, 30, 0.025);
-  --surface-elevated: rgba(15, 12, 30, 0.045);
-  --surface-strong: rgba(15, 12, 30, 0.08);
-
-  /* Texto */
-  --ink-rgb: 26 26 46;
-  --ink: rgb(var(--ink-rgb));
-  --ink-muted: rgb(var(--ink-rgb) / 0.9);
-  --ink-dim: rgb(var(--ink-rgb) / 0.76);
-  --ink-faint: rgb(var(--ink-rgb) / 0.6);
-  --ink-on-accent: #FFFFFF;
-
-  /* Bordes */
-  --border: rgba(26, 26, 46, 0.10);
-  --border-strong: rgba(26, 26, 46, 0.18);
-
-  --focus-ring: rgb(var(--brand-rgb) / 0.45);
-  --noise-opacity: 0.025;
-  --shadow-card:
-    inset 0 1px 0 rgba(255,255,255,0.9),
-    0 12px 32px -16px rgba(26, 26, 46, 0.18),
-    0 0 0 1px rgba(26, 26, 46, 0.06);
+  --shadow-card: 0 4px 6px -1px rgba(0,0,0,0.3), 0 2px 4px -1px rgba(0,0,0,0.2), 0 0 0 1px rgba(255,255,255,0.06);
 }
 
 body {
@@ -120,22 +111,6 @@ body {
   text-rendering: optimizeLegibility;
   position: relative;
   transition: background-color 0.4s ease, color 0.4s ease;
-}
-
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  opacity: var(--noise-opacity);
-  mix-blend-mode: soft-light;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='0.35'/></svg>");
-}
-
-body > * {
-  position: relative;
-  z-index: 1;
 }
 
 body.immersive-mode .simulation-fab,
@@ -149,24 +124,30 @@ a {
   text-decoration: none;
 }
 
-@keyframes float {
+/* Animaciones suaves generales */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes charBob {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+  50% { transform: translateY(-4px); }
 }
 
-@keyframes pulse {
-  0% { transform: scale(0.95); opacity: 0.7; }
-  70% { transform: scale(1); opacity: 1; }
-  100% { transform: scale(0.95); opacity: 0.7; }
+@keyframes simPulseSmall {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.85); }
 }
 
-@keyframes pulse-ring {
-  0% { transform: scale(0.7); opacity: 0.9; }
-  100% { transform: scale(1.2); opacity: 0; }
-}
-
-@keyframes spin-slow {
-  to { transform: rotate(360deg); }
+@keyframes heroTextIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @media (max-width: 980px) {
@@ -177,65 +158,20 @@ html {
   scroll-behavior: smooth;
 }
 
-@keyframes heroTextIn {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes charBob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
-}
-
-@keyframes sheen {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
-@keyframes simPulseSmall {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%       { opacity: 0.4; transform: scale(0.85); }
-}
-
-/* Card elevada con depth real: shadow multi-capa + glow opcional vía --card-glow.
-   El borde "1px" lo da el último box-shadow (no border) para que respete el border-radius
-   sin shift de layout en hover. */
-/* Card elevada: usa --shadow-card del tema activo (dark vs light) + opcional --card-glow */
-.card-elevated {
+/* Card base limpia (Reemplaza a card-elevated con glow) */
+.card {
   position: relative;
-  border-radius: 20px;
-  background: var(--surface);
-  box-shadow: var(--shadow-card), 0 0 80px -20px var(--card-glow, transparent);
-  transition: box-shadow 0.45s ease, transform 0.25s ease, background-color 0.4s ease;
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
+  border: 1px solid var(--border);
 }
-.card-elevated:hover {
-  background: var(--surface-elevated);
-  box-shadow: var(--shadow-card), 0 0 110px -16px var(--card-glow, transparent);
-}
-
-/* Aurora layer: halo dinámico que se tiñe con el nivel de estrés.
-   El color real lo inyecta el componente vía style={{ '--aurora': state.hex }}.
-   La transición lenta (1.2s) hace que se sienta como una "atmósfera" que cambia,
-   no un flash. */
-.aurora-layer {
-  position: fixed;
-  inset: -10%;
-  pointer-events: none;
-  z-index: 0;
-  background:
-    radial-gradient(60% 50% at 18% 22%, color-mix(in oklab, var(--aurora, #B8A4FF) 32%, transparent) 0%, transparent 60%),
-    radial-gradient(55% 45% at 82% 78%, color-mix(in oklab, var(--aurora, #B8A4FF) 22%, transparent) 0%, transparent 65%),
-    radial-gradient(40% 35% at 65% 18%, color-mix(in oklab, var(--aurora, #B8A4FF) 18%, transparent) 0%, transparent 70%);
-  filter: blur(40px) saturate(120%);
-  transition: background 1200ms cubic-bezier(.4,0,.2,1);
+.card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.04);
+  border-color: var(--border-strong);
 }
 
-/* Para navegadores que no soportan color-mix (fallback simple) */
-@supports not (background: color-mix(in oklab, red, blue)) {
-  .aurora-layer {
-    background:
-      radial-gradient(60% 50% at 18% 22%, var(--aurora, #B8A4FF) 0%, transparent 60%),
-      radial-gradient(55% 45% at 82% 78%, var(--aurora, #B8A4FF) 0%, transparent 65%);
-    opacity: 0.25;
-  }
+.aurora-layer, AmbientOrbs {
+  display: none !important; /* Desactivar los efectos de aurora global */
 }

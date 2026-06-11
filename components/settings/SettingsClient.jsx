@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { GradientText, AmbientOrbs, Card } from "@/components/marketing/primitives";
+import { Card } from "@/components/marketing/primitives";
 import { IconArrowLeft, IconSettings, IconUser, IconSun, IconMoon, IconSliders, IconCheck } from "@/components/marketing/icons";
 import { CHILD_PROFILE, PARENT_PROFILE } from "@/lib/mockData";
 
@@ -60,7 +60,6 @@ export default function SettingsClient() {
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--ink)", position: "relative" }}>
-      <AmbientOrbs/>
 
       <button onClick={() => router.push("/dashboard")} style={{
         position: "fixed", top: 28, left: 28, zIndex: 10,
@@ -75,11 +74,11 @@ export default function SettingsClient() {
 
         {/* Encabezado */}
         <div style={{ marginBottom: 36 }}>
-          <div style={{ fontSize: 12, letterSpacing: 2, textTransform: "uppercase", color: "rgba(184,164,255,0.9)", marginBottom: 10 }}>
+          <div style={{ fontSize: 12, letterSpacing: 2, textTransform: "uppercase", color: "var(--brand)", marginBottom: 10, fontWeight: 700 }}>
             Configuración
           </div>
-          <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 36, fontWeight: 500, margin: "0 0 6px", letterSpacing: "-0.02em" }}>
-            <GradientText>Ajustes</GradientText>
+          <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 36, fontWeight: 700, margin: "0 0 6px", letterSpacing: "-0.02em" }}>
+            Ajustes
           </h1>
           <p style={{ color: "var(--ink-dim)", fontSize: 14, margin: 0 }}>
             Personaliza CalmBand para {CHILD_PROFILE.name}.
@@ -178,7 +177,7 @@ export default function SettingsClient() {
             </button>
           </div>
           <div style={{ marginTop: 14, fontSize: 12, color: "var(--ink-faint)" }}>
-            El modo claro está disponible pero requiere activar el tema CSS completo en producción.
+            Puedes cambiar a modo oscuro para situaciones de baja luminosidad.
           </div>
         </Card>
 
@@ -229,10 +228,10 @@ export default function SettingsClient() {
             style={{
               padding: "10px 22px", borderRadius: 10,
               background: profileSaved
-                ? "rgb(var(--calm-rgb) / 0.2)"
-                : "linear-gradient(135deg, rgba(184,164,255,0.2), rgba(184,164,255,0.08))",
-              border: `1px solid ${profileSaved ? "rgb(var(--calm-rgb) / 0.4)" : "rgba(184,164,255,0.35)"}`,
-              color: profileSaved ? "#5EDC9A" : "#D4C5FF",
+                ? "var(--calm)"
+                : "var(--surface)",
+              border: `1px solid ${profileSaved ? "var(--calm)" : "var(--border-strong)"}`,
+              color: profileSaved ? "#FFFFFF" : "var(--ink)",
               fontSize: 13, fontWeight: 600, cursor: "pointer",
               display: "inline-flex", alignItems: "center", gap: 6,
               fontFamily: "Inter, sans-serif", transition: "all 0.3s",

@@ -65,7 +65,7 @@ export default function HistoryClient() {
           <IconArrowLeft size={14}/> Dashboard
         </Link>
         <div>
-          <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 28, fontWeight: 500, margin: 0, letterSpacing: "-0.02em" }}>
+          <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 28, fontWeight: 700, margin: 0, letterSpacing: "-0.02em" }}>
             Historial de {CHILD_PROFILE.name}
           </h1>
           <p style={{ color: "var(--ink-dim)", fontSize: 13, margin: "4px 0 0" }}>Últimos 14 días de monitoreo</p>
@@ -141,9 +141,9 @@ export default function HistoryClient() {
             {filteredSessions.map((s, i) => {
             const state = stressState(s.avgStress);
             return (
-              <button key={i} onClick={() => setSelectedSession(s)} className="history-row" style={{
+              <button key={i} onClick={() => setSelectedSession(s)} className="history-row card hover:-translate-y-0.5 transition-all" style={{
                 padding: "18px 22px", borderRadius: 16,
-                background: "linear-gradient(180deg, var(--surface), rgba(255,255,255,0.01))",
+                background: "var(--surface)",
                 border: "1px solid var(--border)",
                 display: "grid", gridTemplateColumns: "140px 1fr auto", alignItems: "center", gap: 20,
                 cursor: "pointer", textAlign: "left"
@@ -258,9 +258,9 @@ export default function HistoryClient() {
               moderate: SEMANTIC_COLORS.danger,
             };
             return (
-              <div key={i} style={{
+              <div key={i} className="card" style={{
                 padding: "18px 22px", borderRadius: 16,
-                background: "linear-gradient(180deg, var(--surface), rgba(255,255,255,0.01))",
+                background: "var(--surface)",
                 border: "1px solid var(--border)",
                 display: "flex", alignItems: "center", gap: 20
               }}>

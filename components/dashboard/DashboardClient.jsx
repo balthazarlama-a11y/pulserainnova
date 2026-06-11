@@ -39,54 +39,7 @@ const ACTIVITY_ICONS = {
   music: <IconMusic size={14}/>,
 };
 
-// ─── Anillo de estrés ────────────────────────────────────────────────────────
-const StressRing = ({ value, size = 260 }) => {
-  const state = stressState(value);
-  const r = size / 2 - 22;
-  const circ = 2 * Math.PI * r;
-  const off = circ - (value / 100) * circ;
-  return (
-    <div className="relative" style={{ width: size, height: size }}>
-      {/* Halo externo que respira */}
-      <div
-        aria-hidden
-        className="absolute inset-[-18%] rounded-full blur-2xl animate-breathe-slow"
-        style={{ background: `radial-gradient(circle, ${state.hex}55, transparent 60%)` }}
-      />
-      <svg width={size} height={size} className="relative -rotate-90">
-        <defs>
-          <linearGradient id="stressGrad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor={state.hex}/>
-            <stop offset="100%" stopColor={state.hex} stopOpacity="0.55"/>
-          </linearGradient>
-        </defs>
-        <circle cx={size/2} cy={size/2} r={r} stroke="var(--border-strong)" strokeWidth="14" fill="none"/>
-        <circle
-          cx={size/2} cy={size/2} r={r}
-          stroke="url(#stressGrad)" strokeWidth="14" fill="none"
-          strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={off}
-          style={{ transition: "stroke-dashoffset 0.8s cubic-bezier(.4,0,.2,1), stroke 0.4s" }}
-        />
-      </svg>
-      <div
-        className="absolute inset-3 rounded-full pointer-events-none transition-all duration-500"
-        style={{ background: `radial-gradient(circle, ${state.hex}33, transparent 70%)` }}
-      />
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <div className="text-[10px] tracking-[0.2em] uppercase text-ink-faint mb-2">
-          <span title="Índice estimado de calma basado en HRV y pulso" className="cursor-help">Nivel de calma</span>
-        </div>
-        <div
-          className="font-display font-medium leading-none tracking-tighter transition-colors duration-500"
-          style={{ fontSize: "clamp(56px, 7vw, 76px)", color: state.hex, letterSpacing: "-0.04em" }}
-        >
-          {100 - value}
-        </div>
-        <div className="text-sm font-medium text-ink-muted mt-2">{state.label}</div>
-      </div>
-    </div>
-  );
-};
+
 
 // ─── Gráfico 24h ─────────────────────────────────────────────────────────────
 const StressChart = ({ stress, hourlyData }) => {
@@ -108,27 +61,19 @@ const StressChart = ({ stress, hourlyData }) => {
   const xFor = i => 20 + (i / 23) * (w - 40);
   const yFor = v => h - 20 - (v / 100) * (h - 40);
   const d = points.map((v, i) => (i ? "L" : "M") + xFor(i) + " " + yFor(v)).join(" ");
-  const dFill = d + ` L ${xFor(23)} ${h-20} L ${xFor(0)} ${h-20} Z`;
   const state = stressState(stress);
 
   return (
     <div className="w-full relative">
       <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-auto block">
-        <defs>
-          <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={state.hex} stopOpacity="0.35"/>
-            <stop offset="100%" stopColor={state.hex} stopOpacity="0"/>
-          </linearGradient>
-        </defs>
         {[0.25, 0.5, 0.75].map(g => (
           <line key={g} x1="20" x2={w-20} y1={20 + g*(h-40)} y2={20 + g*(h-40)} stroke="var(--border)" strokeDasharray="2 4"/>
         ))}
-        <path d={dFill} fill="url(#chartFill)"/>
         <path d={d} stroke={state.hex} strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
         <circle cx={xFor(23)} cy={yFor(points[23])} r="5" fill={state.hex}/>
         <circle cx={xFor(23)} cy={yFor(points[23])} r="10" fill={state.hex} opacity="0.25"/>
         {[0, 6, 12, 18, 23].map(i => (
-          <text key={i} x={xFor(i)} y={h - 4} textAnchor="middle" fontSize="10" fill="var(--ink-faint)" fontFamily="Inter">
+          <text key={i} x={xFor(i)} y={h - 4} textAnchor="middle" fontSize="10" fill="var(--ink-faint)" fontFamily="'Plus Jakarta Sans'">
             {i === 23 ? "Ahora" : `${i.toString().padStart(2,"0")}:00`}
           </text>
         ))}
@@ -151,12 +96,10 @@ const WeekBars = ({ weeklyOverride }) => {
         return (
           <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
             <div
-              className="w-full rounded-lg transition-[height,background] duration-500"
+              className="w-full rounded-md transition-[height,background] duration-500"
               style={{
                 height: `${avgStress}%`,
-                background: `linear-gradient(180deg, ${s.hex}, ${s.hex}77)`,
-                boxShadow: d.isToday ? `0 0 18px ${s.hex}77, inset 0 1px 0 rgba(255,255,255,0.2)` : "inset 0 1px 0 rgba(255,255,255,0.08)",
-                border: d.isToday ? `1px solid ${s.hex}` : "1px solid transparent"
+                background: d.isToday ? s.hex : "var(--border)",
               }}
             />
             <div
@@ -401,28 +344,24 @@ const RecommendationPanel = ({ stress, bpm, bpmResting, hourlyData }) => {
 
   return (
     <>
-      <div
-        className="card-elevated h-full p-6 sm:p-7"
-        style={{ "--card-glow": `${state.hex}33` }}
-      >
-        <div className="flex justify-between items-start mb-4 gap-3">
-          <div className="min-w-0">
-            <div className="inline-flex items-center gap-2 text-[10px] sm:text-[11px] tracking-[0.18em] uppercase text-[#D4C5FF] mb-1.5">
-              <IconSparkles size={12}/> Recomendación IA
-            </div>
-            <h3 className="m-0 mb-2 font-display text-2xl sm:text-[26px] font-medium tracking-tight">Para este momento</h3>
-            <div className="flex flex-wrap gap-1.5 items-center">
-              <div
-                className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-semibold tracking-wider rounded-full px-2.5 py-1"
-                style={{
-                  color: phaseLabel.color,
-                  background: `${phaseLabel.color}18`,
-                  border: `1px solid ${phaseLabel.color}35`,
-                }}
-              >
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: phaseLabel.color, boxShadow: `0 0 6px ${phaseLabel.color}` }}/>
-                {phaseLabel.text}
+        <div className="card p-6 sm:p-7 flex flex-col h-full">
+          <div className="flex justify-between items-start mb-4 gap-3">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 text-[11px] uppercase tracking-wider font-semibold text-brand mb-1.5">
+                <IconSparkles size={12}/> Recomendación IA
               </div>
+              <h3 className="m-0 mb-2 font-display text-[26px] font-semibold tracking-tight">Para este momento</h3>
+              <div className="flex flex-wrap gap-1.5 items-center">
+                <div
+                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-wider rounded-full px-2.5 py-1"
+                  style={{
+                    color: phaseLabel.color,
+                    background: `${phaseLabel.color}1A`
+                  }}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: phaseLabel.color }}/>
+                  {phaseLabel.text}
+                </div>
               {!loading && recs && (
                 <div
                   className="inline-flex items-center gap-1 text-[10px] font-bold tracking-wider uppercase rounded-full px-2 py-0.5"
@@ -464,10 +403,10 @@ const RecommendationPanel = ({ stress, bpm, bpmResting, hourlyData }) => {
           </div>
         )}
 
-        <div className="mb-3.5 px-3.5 py-3 rounded-xl bg-white/[0.03] border border-line text-[13px] text-ink-dim leading-relaxed">
-          <div className="text-[10px] tracking-[0.18em] uppercase text-ink-faint mb-1.5">Resumen del día</div>
-          <div className="mb-1.5">{narrative.summary}</div>
-          <div className="text-ink-muted">{narrative.recommendation}</div>
+        <div className="mb-3.5 px-4 py-3.5 rounded-xl bg-surface border border-line text-[13px] text-ink-muted leading-relaxed">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-dim mb-1.5">Resumen del día</div>
+          <div className="mb-1.5 font-medium">{narrative.summary}</div>
+          <div className="">{narrative.recommendation}</div>
         </div>
 
         {loading ? (
@@ -525,22 +464,22 @@ const RecommendationPanel = ({ stress, bpm, bpmResting, hourlyData }) => {
 
 // ─── Tarjeta de estadística ───────────────────────────────────────────────────
 const Stat = ({ label, value, sub, accent, action, onAction }) => (
-  <div className="p-5 rounded-2xl bg-white/[0.025] border border-line transition-colors hover:border-white/15">
-    <div className="text-[10px] sm:text-[11px] tracking-[0.18em] uppercase text-ink-dim mb-2">{label}</div>
+  <div className="p-5 rounded-2xl bg-white border border-line transition-colors hover:border-line-strong shadow-sm">
+    <div className="text-[11px] uppercase tracking-wider text-ink-dim font-semibold mb-2">{label}</div>
     <div
-      className="font-display font-medium text-[28px] sm:text-[32px] leading-none tracking-tight"
+      className="font-display font-bold text-[32px] leading-none tracking-tight mb-1"
       style={{ color: accent || "var(--ink)" }}
     >
       {value}
     </div>
-    <div className="text-[12px] text-ink-faint mt-1">{sub}</div>
+    <div className="text-[13px] text-ink-muted">{sub}</div>
     {action && (
       <button
         onClick={onAction}
-        className="mt-2 text-[11px] inline-flex items-center gap-1 px-2 py-1 rounded-md bg-transparent border cursor-pointer hover:bg-brand/10 transition-colors"
-        style={{ color: SEMANTIC_COLORS.brand, borderColor: `${SEMANTIC_COLORS.brand}40` }}
+        className="mt-3 text-[12px] font-medium inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-transparent border cursor-pointer hover:bg-surface transition-colors"
+        style={{ color: "var(--brand)", borderColor: "var(--border-strong)" }}
       >
-        <IconRefresh size={10}/> {action}
+        <IconRefresh size={12}/> {action}
       </button>
     )}
   </div>
@@ -550,21 +489,19 @@ const Stat = ({ label, value, sub, accent, action, onAction }) => (
 const HubCard = ({ href, icon, title, desc, accent }) => (
   <Link
     href={href}
-    className="group card-elevated p-5 h-full cursor-pointer transition-all hover:-translate-y-0.5 block no-underline text-inherit"
-    style={{ "--card-glow": `${accent}33` }}
+    className="group card p-5 h-full cursor-pointer transition-all hover:-translate-y-0.5 block no-underline text-inherit"
   >
     <div
-      className="w-11 h-11 rounded-xl flex items-center justify-center mb-4 transition-transform group-hover:scale-105"
+      className="w-10 h-10 rounded-lg flex items-center justify-center mb-4 transition-transform group-hover:scale-105"
       style={{
-        background: `linear-gradient(135deg, ${accent}40, ${accent}10)`,
-        border: `1px solid ${accent}30`,
+        background: `${accent}1A`,
         color: accent,
       }}
     >
       {icon}
     </div>
-    <h3 className="text-[15px] font-semibold m-0 mb-1.5 tracking-tight">{title}</h3>
-    <p className="text-[13px] text-ink-dim m-0 leading-snug">{desc}</p>
+    <h3 className="text-[15px] font-semibold m-0 mb-1.5 tracking-tight text-ink">{title}</h3>
+    <p className="text-[13px] text-ink-muted m-0 leading-snug">{desc}</p>
   </Link>
 );
 
@@ -663,13 +600,7 @@ export default function DashboardClient({ user, profile }) {
   ];
 
   return (
-    <div
-      className="min-h-screen text-ink relative overflow-hidden bg-bg"
-      style={{ "--aurora": state.hex }}
-    >
-      {/* Halo aurora dinámico — se tiñe con state.hex en runtime */}
-      <div className="aurora-layer animate-aurora-shift" aria-hidden/>
-      <AmbientOrbs/>
+    <div className="min-h-screen text-ink relative overflow-hidden bg-bg">
 
       {/* Sidebar (desktop) */}
       <aside
@@ -718,7 +649,7 @@ export default function DashboardClient({ user, profile }) {
               className="font-display font-medium m-0 leading-[1.02]"
               style={{ fontSize: "clamp(2.25rem, 6vw, 4rem)", letterSpacing: "-0.025em" }}
             >
-              Así está <GradientText>{CHILD_PROFILE.name}</GradientText> hoy.
+              Así está <span className="text-brand font-bold">{CHILD_PROFILE.name}</span> hoy.
             </h1>
           </div>
 
@@ -753,58 +684,9 @@ export default function DashboardClient({ user, profile }) {
           </div>
         </div>
 
-        {/* Fila 1: Anillo + Recomendaciones */}
+        {/* Fila 1: KPIs + Recomendaciones */}
         <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-5 lg:gap-6 mb-5 lg:mb-6">
-          <div
-            className="card-elevated p-6 sm:p-7 flex flex-col items-center justify-center gap-5"
-            style={{ "--card-glow": `${state.hex}33` }}
-          >
-            <StressRing value={stress} size={260}/>
-            <div
-              className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-full text-[13px] font-medium transition-all duration-500"
-              style={{
-                background: `${state.hex}18`,
-                border: `1px solid ${state.hex}40`,
-                color: state.hex,
-                boxShadow: `0 0 24px -8px ${state.hex}88`
-              }}
-            >
-              <span
-                className="w-2 h-2 rounded-full"
-                style={{ background: state.hex, boxShadow: `0 0 8px ${state.hex}, 0 0 0 0 ${state.hex}66` }}
-              />
-              {state.key === "calm"     && "Tranquilo · puede concentrarse"}
-              {state.key === "mild"     && "Un poco inquieto · observar"}
-              {state.key === "moderate" && "Estresado · necesita apoyo"}
-              {state.key === "high"     && "Muy ansioso · intervenir ya"}
-            </div>
-            <div className="text-[12px] text-ink-faint text-center max-w-[280px] leading-relaxed">
-              Basado en{" "}
-              <abbr title="Variabilidad de la frecuencia cardíaca" className="no-underline border-b border-dotted border-white/30 cursor-help">HRV</abbr>
-              {" "}y ritmo cardíaco de los últimos 10 minutos. La pulsera se prende una luz cuando detecta un nivel de estrés elevado.
-            </div>
-          </div>
-          <RecommendationPanel
-            stress={stress}
-            bpm={avgBpm}
-            bpmResting={CHILD_PROFILE.bpmResting}
-            hourlyData={hourlyData}
-          />
-        </div>
-
-        {/* Fila 2: Gráfico 24h */}
-        <div
-          className="card-elevated p-6 sm:p-7 mb-5 lg:mb-6"
-          style={{ "--card-glow": `${state.hex}22` }}
-        >
-          <div className="flex justify-between items-center mb-5">
-            <div>
-              <div className="text-[10px] sm:text-[11px] tracking-[0.18em] uppercase text-ink-dim mb-1">Últimas 24 horas</div>
-              <h3 className="m-0 font-display text-[22px] sm:text-[26px] font-medium tracking-tight">Línea del día</h3>
-            </div>
-          </div>
-          <StressChart stress={stress} hourlyData={hourlyData}/>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
+          <div className="flex flex-col gap-4">
             <Stat
               label="Promedio hoy"
               value={`${Math.round(100 - stress * 0.95)}`}
@@ -816,7 +698,7 @@ export default function DashboardClient({ user, profile }) {
               value={`${avgBpm}`}
               sub={
                 <span>
-                  <abbr title="Latidos por minuto" className="no-underline border-b border-dotted border-white/30 cursor-help">lpm</abbr>
+                  <abbr title="Latidos por minuto" className="no-underline border-b border-dotted border-line-strong cursor-help">lpm</abbr>
                   {" "}promedio
                 </span>
               }
@@ -830,33 +712,44 @@ export default function DashboardClient({ user, profile }) {
               sub="anoche"
             />
           </div>
+          <RecommendationPanel
+            stress={stress}
+            bpm={avgBpm}
+            bpmResting={CHILD_PROFILE.bpmResting}
+            hourlyData={hourlyData}
+          />
+        </div>
+
+        {/* Fila 2: Gráfico 24h */}
+        <div className="card p-6 sm:p-7 mb-5 lg:mb-6">
+          <div className="flex justify-between items-center mb-5">
+            <div>
+              <div className="text-[11px] uppercase tracking-wider text-ink-dim font-semibold mb-1">Últimas 24 horas</div>
+              <h3 className="m-0 font-display text-[26px] font-semibold tracking-tight">Línea del día</h3>
+            </div>
+          </div>
+          <StressChart stress={stress} hourlyData={hourlyData}/>
         </div>
 
         {/* Fila 3: Semana + Actividad */}
         <div className="grid grid-cols-1 md:grid-cols-[1.3fr_1fr] gap-5 lg:gap-6 mb-5 lg:mb-6">
-          <div
-            className="card-elevated p-6 sm:p-7"
-            style={{ "--card-glow": `${state.hex}22` }}
-          >
+          <div className="card p-6 sm:p-7">
             <div className="flex justify-between items-start mb-5 gap-3">
               <div>
-                <div className="text-[10px] sm:text-[11px] tracking-[0.18em] uppercase text-ink-dim mb-1">Esta semana</div>
-                <h3 className="m-0 font-display text-[22px] sm:text-[26px] font-medium tracking-tight">Patrón semanal</h3>
+                <div className="text-[11px] uppercase tracking-wider text-ink-dim font-semibold mb-1">Esta semana</div>
+                <h3 className="m-0 font-display text-[26px] font-semibold tracking-tight">Patrón semanal</h3>
               </div>
               <Pill>{state.label}</Pill>
             </div>
             <WeekBars weeklyOverride={simWeekly}/>
-            <div className="mt-5 px-3.5 py-3 rounded-xl bg-white/[0.02] border border-line text-[13px] text-ink-dim leading-relaxed">
+            <div className="mt-5 px-3.5 py-3 rounded-xl bg-surface border border-line text-[13px] text-ink-muted leading-relaxed">
               <strong className="text-ink">Observación:</strong> se ve mayor variabilidad de estrés y ritmo cardíaco a mitad de semana, con una bajada progresiva y más calma hacia el fin de semana.
             </div>
           </div>
 
-          <div
-            className="card-elevated p-6 sm:p-7"
-            style={{ "--card-glow": `${SEMANTIC_COLORS.brand}1F` }}
-          >
-            <div className="text-[10px] sm:text-[11px] tracking-[0.18em] uppercase text-ink-dim mb-1">Actividad</div>
-            <h3 className="m-0 mb-4 font-display text-[22px] sm:text-[26px] font-medium tracking-tight">Hoy</h3>
+          <div className="card p-6 sm:p-7">
+            <div className="text-[11px] uppercase tracking-wider text-ink-dim font-semibold mb-1">Actividad</div>
+            <h3 className="m-0 mb-4 font-display text-[26px] font-semibold tracking-tight">Hoy</h3>
             <div className="flex flex-col gap-3.5">
               {activityItems.map((x, i) => {
                 const accent = normalizeAccent(x.color);
@@ -869,12 +762,12 @@ export default function DashboardClient({ user, profile }) {
                   >
                     <div className="text-[12px] text-ink-faint tabular-nums w-11 shrink-0">{x.time}</div>
                     <div
-                      className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                      style={{ background: `${accent}20`, border: `1px solid ${accent}40`, color: accent }}
+                      className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                      style={{ background: `${accent}1A`, color: accent }}
                     >
                       {ACTIVITY_ICONS[x.icon] || <IconHeart size={14}/>}
                     </div>
-                    <div className="text-[13px] text-ink-muted flex-1 min-w-0">{label}</div>
+                    <div className="text-[13px] text-ink-muted flex-1 min-w-0 font-medium">{label}</div>
                   </div>
                 );
               })}
