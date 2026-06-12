@@ -5,7 +5,7 @@ export const Input = React.forwardRef(({ className, ...props }, ref) => (
   <input
     ref={ref}
     className={cn(
-      "w-full rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-slate-400 focus:outline-none",
+      "w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint transition-colors focus:border-brand focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]",
       className
     )}
     {...props}

@@ -4,10 +4,10 @@ import React from "react";
 import { cn } from "@/lib/utils";
 
 const variants = {
-  primary: "bg-white text-slate-900 hover:bg-slate-100",
-  outline: "border border-slate-700 text-white hover:bg-slate-900",
-  ghost: "text-slate-200 hover:bg-slate-900",
-  danger: "bg-rose-500 text-white hover:bg-rose-400"
+  primary: "bg-brand text-ink-on-accent hover:opacity-90",
+  outline: "border border-line text-ink hover:bg-surface",
+  ghost: "text-ink-muted hover:bg-surface hover:text-ink",
+  danger: "bg-danger text-white hover:opacity-90"
 };
 
 const sizes = {

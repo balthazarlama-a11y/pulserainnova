@@ -136,13 +136,13 @@ export default function AuthForm({ mode }) {
   return (
     <Card className="mx-auto w-full max-w-md space-y-6">
       <div className="space-y-2">
-        <p className="text-xs uppercase tracking-[0.25em] text-slate-400">
+        <p className="text-xs uppercase tracking-[0.25em] text-ink-faint">
           CalmBand
         </p>
-        <h1 className="text-2xl font-semibold text-white">
+        <h1 className="text-2xl font-semibold text-ink">
           {isSignUp ? "Crea tu cuenta" : "¡Hola de nuevo!"}
         </h1>
-        <p className="text-sm text-slate-300">
+        <p className="text-sm text-ink-muted">
           {isSignUp
             ? "Regístrate para acceder a tu panel de control."
             : "Inicia sesión para continuar."}
@@ -189,13 +189,13 @@ export default function AuthForm({ mode }) {
         </div>
 
         {error && (
-          <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+          <p className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
             {error}
           </p>
         )}
 
         {info && (
-          <p className="rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-sm text-emerald-200">
+          <p className="rounded-lg border border-brand/30 bg-brand/10 px-3 py-2 text-sm text-brand">
             {info}
           </p>
         )}
@@ -221,11 +221,11 @@ export default function AuthForm({ mode }) {
         </Button>
       </form>
 
-      <div className="text-sm text-slate-400">
+      <div className="text-sm text-ink-faint">
         {isSignUp ? "¿Ya tienes una cuenta?" : "¿Necesitas una cuenta?"} {" "}
         <Link
           href={isSignUp ? "/sign-in" : "/sign-up"}
-          className="text-white hover:underline"
+          className="font-medium text-brand hover:underline"
         >
           {isSignUp ? "Inicia sesión" : "Regístrate"}
         </Link>

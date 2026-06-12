@@ -45,7 +45,7 @@ export default function OnboardingClient() {
 
   return (
     <div className="min-h-[calc(100vh-64px)] flex items-center justify-center p-6 bg-bg">
-      <Card className="w-full max-w-md p-8 bg-surface/50 border-line backdrop-blur-md">
+      <Card className="w-full max-w-md p-8">
         {step === 1 && (
           <div className="space-y-6 text-center">
             <div className="w-16 h-16 bg-brand/20 text-brand rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">👋</div>
