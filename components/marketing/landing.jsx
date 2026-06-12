@@ -445,7 +445,7 @@ const Footer = () => (
 const LandingPage = ({ onSignUp, onSignIn, onTalk }) => {
   const handleSecondary = () => smoothScroll("features");
   return (
-    <div className="bg-[#0A0A1A] text-ink">
+    <div className="landing-theme bg-bg text-ink">
       <NavBar onSignIn={onSignIn} onSignUp={onSignUp} />
       <HeroGeometric onPrimary={onSignUp} onSecondary={handleSecondary} />
       <BraceletShowcase />
