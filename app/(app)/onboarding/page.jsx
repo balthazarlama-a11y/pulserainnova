@@ -6,6 +6,9 @@ export const metadata = {
   title: "Onboarding | CalmBand"
 };
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function OnboardingPage() {
   const supabase = createClient();
   const { data: userData } = await supabase.auth.getUser();

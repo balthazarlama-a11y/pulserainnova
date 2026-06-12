@@ -11,6 +11,9 @@ export const metadata = {
   title: "Dashboard | CalmBand"
 };
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function DashboardPage() {
   if (SIMULATION_ONLY) {
     return <DashboardClient user={SIMULATION_USER} profile={SIMULATION_PROFILE} />;
