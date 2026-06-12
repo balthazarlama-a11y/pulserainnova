@@ -12,10 +12,17 @@ export async function middleware(request) {
   const { response, user } = await updateSession(request);
   const path = request.nextUrl.pathname;
 
-  if (PROTECTED_PATHS.some((route) => path.startsWith(route)) && !user) {
+  // Redirige preservando las cookies de sesión refrescadas por updateSession.
+  const redirectTo = (pathname) => {
     const url = request.nextUrl.clone();
-    url.pathname = "/sign-in";
-    return NextResponse.redirect(url);
+    url.pathname = pathname;
+    const redirect = NextResponse.redirect(url);
+    response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+    return redirect;
+  };
+
+  if (PROTECTED_PATHS.some((route) => path.startsWith(route)) && !user) {
+    return redirectTo("/sign-in");
   }
 
   if (user) {
@@ -23,16 +30,12 @@ export async function middleware(request) {
 
     // Redirigir fuera de las rutas de auth según el rol
     if (AUTH_PATHS.some((route) => path.startsWith(route))) {
-      const url = request.nextUrl.clone();
-      url.pathname = rol === 'niño' ? '/kids' : '/dashboard';
-      return NextResponse.redirect(url);
+      return redirectTo(rol === 'niño' ? '/kids' : '/dashboard');
     }
 
     // Restricciones estrictas para el rol 'niño'
     if (rol === 'niño' && !path.startsWith('/kids')) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/kids';
-      return NextResponse.redirect(url);
+      return redirectTo('/kids');
     }
   }
 
