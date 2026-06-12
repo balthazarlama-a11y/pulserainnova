@@ -29,6 +29,18 @@ export default async function DashboardPage() {
     .eq("id", userData.user.id)
     .maybeSingle();
 
+  // Check if tutor has any children
+  if (profile?.rol === 'tutor') {
+    const { count } = await supabase
+      .from("niños")
+      .select("*", { count: 'exact', head: true })
+      .eq("tutor_id", userData.user.id);
+
+    if (count === 0) {
+      redirect("/onboarding");
+    }
+  }
+
   // Mapeamos 'nombre' a 'display_name' para compatibilidad con componentes existentes
   const mappedProfile = profile ? {
     ...profile,

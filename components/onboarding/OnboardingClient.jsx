@@ -39,7 +39,7 @@ export default function OnboardingClient() {
         console.error("Error creating child:", error);
       }
     } else if (step === 3) {
-      router.push("/dashboard");
+      window.location.assign("/dashboard");
     }
   };
 

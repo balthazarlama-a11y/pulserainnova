@@ -90,7 +90,7 @@ export default function AuthForm({ mode }) {
         }
 
         if (data?.session && data.user) {
-          finishRedirect("/onboarding");
+          finishRedirect("/dashboard");
           return;
         }
 
