@@ -251,6 +251,17 @@ export const IconAlertTriangle = (p) => (
     <line x1="12" y1="17" x2="12.01" y2="17" />
   </Icon>
 );
+export const IconChevronDown = (p) => (
+  <Icon {...p}>
+    <polyline points="6 9 12 15 18 9" />
+  </Icon>
+);
+export const IconClock = (p) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <polyline points="12 7 12 12 15 14" />
+  </Icon>
+);
 export const IconSliders = (p) => (
   <Icon {...p}>
     <line x1="4" y1="21" x2="4" y2="14" />
