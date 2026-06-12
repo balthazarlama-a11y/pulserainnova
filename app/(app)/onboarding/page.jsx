@@ -10,19 +10,5 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function OnboardingPage() {
-  const supabase = createClient();
-  const { data: userData } = await supabase.auth.getUser();
-
-  if (userData?.user) {
-    const { count } = await supabase
-      .from("niños")
-      .select("*", { count: 'exact', head: true })
-      .eq("tutor_id", userData.user.id);
-
-    if (count > 0) {
-      redirect("/dashboard");
-    }
-  }
-
   return <OnboardingClient />;
 }
