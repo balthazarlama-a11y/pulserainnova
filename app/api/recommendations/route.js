@@ -31,7 +31,7 @@ function buildPrompt({ stress, bpm, bpmResting, stressKey, childName, childAge }
   return {
     system: "Eres un especialista en ansiedad infantil. Responde ÚNICAMENTE con JSON válido, sin texto adicional.",
 
-    user: `Niño: ${childName}, ${childAge} años.
+    user: `Niño: ${childName}${childAge ? `, ${childAge} años` : ""}.
 BPM actual: ${bpm} (basal: ${bpmResting}). Nivel de ansiedad: ${stress}/100. Estado: ${levelMap[stressKey]}.
 
 Devuelve exactamente este JSON con 3 recomendaciones en español:
@@ -57,7 +57,7 @@ export async function POST(request) {
 
   const {
     stress = 35, bpm = 80, bpmResting = 78,
-    stressKey = "mild", childName = "Simón", childAge = 10,
+    stressKey = "mild", childName = "la persona", childAge = "",
   } = body;
 
   const { system, user } = buildPrompt({ stress, bpm, bpmResting, stressKey, childName, childAge });

@@ -4,9 +4,12 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { stressState } from "@/components/marketing/primitives";
 import { IconWind, IconGamepad, IconMusic, IconBook, IconArrowLeft, IconX, IconArrowRight, IconHeart, IconActivity } from "@/components/marketing/icons";
-import { CHILD_PROFILE, getCurrentStress, getStressKey } from "@/lib/mockData";
-import { useSimulation } from "@/lib/simulationContext";
+import { useAuth } from "@/hooks/useAuth";
+import { usePeople } from "@/lib/peopleContext";
+import { fetchLatestSession, stressFromCalma } from "@/lib/biometria";
 import { SEMANTIC_COLORS } from "@/lib/utils";
+
+const AVATAR_GRADIENT = "linear-gradient(135deg, #B8A4FF, #8B7FD8)";
 
 // Friendly blob character — reacts to stress/mood
 const CalmChar = ({ mood = "calm", size = 220 }) => {
@@ -140,7 +143,7 @@ const BreathingExercise = ({ onClose, onComplete }) => {
           <div style={{ animation: "heroTextIn 0.6s" }}>
             <div style={{ fontSize: 80, marginBottom: 20 }}>✨</div>
             <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 42, fontWeight: 500, margin: "0 0 12px", color: "#fff" }}>
-              ¡Genial, {CHILD_PROFILE.name}!
+              ¡Genial!
             </h2>
             <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 16, marginBottom: 32 }}>
               Completaste {totalCycles} respiraciones. ¿Cómo te sientes ahora?
@@ -717,8 +720,9 @@ const ActivityCard = ({ accent, icon, title, sub, recommended, onClick }) => (
 // Main Kids View
 export default function KidsClient() {
   const router = useRouter();
-  const sim = useSimulation();
-  const [baseStress, setBaseStress] = useState(35);
+  const { supabase } = useAuth();
+  const { selectedPerson } = usePeople();
+  const [baseStress, setBaseStress] = useState(30);
   const [activity, setActivity] = useState(null);
   const [earned, setEarned] = useState({
     breath: 0,
@@ -731,7 +735,19 @@ export default function KidsClient() {
   const [celebrate, setCelebrate] = useState(false);
   const [lastBadge, setLastBadge] = useState(null);
 
-  useEffect(() => { setBaseStress(getCurrentStress()); }, []);
+  const personName = selectedPerson?.nombre || "amigo";
+  const personAge = selectedPerson?.edad;
+  const streakDays = 0;
+
+  useEffect(() => {
+    if (!selectedPerson?.id) return;
+    let active = true;
+    fetchLatestSession(supabase, selectedPerson.id).then((latest) => {
+      const s = stressFromCalma(latest?.nivel_calma);
+      if (active && s != null) setBaseStress(s);
+    });
+    return () => { active = false; };
+  }, [supabase, selectedPerson]);
   useEffect(() => {
     if (typeof document === "undefined") return;
     const isImmersive = Boolean(activity);
@@ -743,13 +759,12 @@ export default function KidsClient() {
     };
   }, [activity]);
 
-  const simData = sim.active ? sim.getCurrentSimData() : null;
-  const stress = sim.active ? simData.stress : baseStress;
+  const stress = baseStress;
 
   const state = stressState(stress);
   const mood = state.key;
   const greeting = stress <= 30 ? "¡Qué bien te ves hoy!" :
-                   stress <= 55 ? `¿Cómo vas, ${CHILD_PROFILE.name}?` :
+                   stress <= 55 ? `¿Cómo vas, ${personName}?` :
                    stress <= 75 ? "¿Necesitas un momento?" : "Estoy aquí contigo";
 
   const handleActivityClose = () => setActivity(null);
@@ -830,27 +845,15 @@ export default function KidsClient() {
         }}>
           <div style={{
             width: 24, height: 24, borderRadius: 12,
-            background: CHILD_PROFILE.avatarGradient,
+            background: AVATAR_GRADIENT,
             fontSize: 11, fontWeight: 700, color: "#FFFFFF",
             display: "flex", alignItems: "center", justifyContent: "center"
-          }}>{CHILD_PROFILE.avatar}</div>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>{CHILD_PROFILE.name} · {CHILD_PROFILE.age} años</span>
+          }}>{(selectedPerson?.avatar || personName[0] || "?").toUpperCase()}</div>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>
+            {personName}{personAge ? ` · ${personAge} años` : ""}
+          </span>
         </div>
       </header>
-
-      {sim.active && (
-        <div style={{
-          position: "relative", zIndex: 2, margin: "0 32px 8px",
-          padding: "8px 16px", borderRadius: 10,
-          background: "rgba(184,164,255,0.1)", border: "1px solid rgba(184,164,255,0.25)",
-          display: "flex", alignItems: "center", gap: 8,
-          fontSize: 13, color: "#D4C5FF",
-        }}>
-          <span style={{ width: 6, height: 6, borderRadius: 3, background: "#B8A4FF", boxShadow: "0 0 8px #B8A4FF", animation: "simPulseSmall 1.5s ease-in-out infinite" }} />
-          Modo simulación · {sim.getTimeLabel()}
-          <style>{`@keyframes simPulseSmall { 0%,100% { opacity:1; } 50% { opacity:0.4; } }`}</style>
-        </div>
-      )}
 
       <main style={{ position: "relative", zIndex: 2, maxWidth: 960, margin: "0 auto", padding: "20px 32px 80px", textAlign: "center" }}>
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
@@ -858,11 +861,11 @@ export default function KidsClient() {
         </div>
 
         <div style={{ fontSize: 13, letterSpacing: 2, textTransform: "uppercase", color: state.hex, fontWeight: 700, marginBottom: 8 }}>
-          ¡Hola {CHILD_PROFILE.name}!
+          ¡Hola {personName}!
         </div>
         <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: "clamp(32px, 5vw, 48px)", fontWeight: 700, margin: "0 auto 12px", maxWidth: 640, lineHeight: 1.1, letterSpacing: "-0.02em" }}>
-          {stress <= 30 && `${CHILD_PROFILE.name} está en calma`}
-          {stress > 30 && stress <= 55 && `${CHILD_PROFILE.name} está un poquito inquieto`}
+          {stress <= 30 && `${personName} está en calma`}
+          {stress > 30 && stress <= 55 && `${personName} está un poquito inquieto`}
           {stress > 55 && stress <= 75 && "¿Necesitas un momento?"}
           {stress > 75 && "Estoy aquí contigo"}
         </h1>
@@ -894,12 +897,12 @@ export default function KidsClient() {
               {[1,2,3,4,5,6,7].map(d => (
                 <div key={d} style={{
                   width: 10, height: 10, borderRadius: 5,
-                  background: d <= CHILD_PROFILE.streakDays ? SEMANTIC_COLORS.attention : "var(--border)",
+                  background: d <= streakDays ? SEMANTIC_COLORS.attention : "var(--border)",
                 }}/>
               ))}
             </div>
             <div style={{ fontSize: 13, color: "var(--ink-muted)", fontWeight: 500 }}>
-              <strong style={{ color: "var(--ink)" }}>{CHILD_PROFILE.streakDays} días</strong> de racha
+              <strong style={{ color: "var(--ink)" }}>{streakDays} días</strong> de racha
             </div>
           </div>
 
@@ -910,7 +913,7 @@ export default function KidsClient() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 8 }}>
             {[
               { key: "breath", label: "Respiración", icon: "🌬️", color: SEMANTIC_COLORS.brand, active: earned.breath > 0 },
-              { key: "streak_3", label: "3 días seguidos", icon: "🔥", color: SEMANTIC_COLORS.attention, active: CHILD_PROFILE.streakDays >= 3 },
+              { key: "streak_3", label: "3 días seguidos", icon: "🔥", color: SEMANTIC_COLORS.attention, active: streakDays >= 3 },
               { key: "first_game", label: "Primer juego", icon: "🌟", color: SEMANTIC_COLORS.calm, active: Object.values(earned).some(v => v > 0) },
             ].map((medal) => (
               <div key={medal.key} style={{

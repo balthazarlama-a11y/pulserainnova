@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 3. Niños
+-- 3. Niños (personas que llevan la pulsera)
 CREATE TABLE IF NOT EXISTS niños (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     nombre TEXT NOT NULL,
@@ -29,8 +29,14 @@ CREATE TABLE IF NOT EXISTS niños (
     colegio_id UUID REFERENCES colegios(id) ON DELETE SET NULL,
     avatar TEXT,
     fecha_nacimiento DATE,
+    edad INTEGER,
+    bpm_reposo INTEGER,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Columnas añadidas para perfiles ya existentes
+ALTER TABLE niños ADD COLUMN IF NOT EXISTS edad INTEGER;
+ALTER TABLE niños ADD COLUMN IF NOT EXISTS bpm_reposo INTEGER;
 
 -- 4. Sesiones Biometria
 CREATE TABLE IF NOT EXISTS sesiones_biometria (
@@ -72,6 +78,19 @@ CREATE TABLE IF NOT EXISTS ejercicios_respiracion (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- 8. Dispositivos (pulseras vinculadas a una persona + red WiFi)
+CREATE TABLE IF NOT EXISTS dispositivos (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    niño_id UUID NOT NULL REFERENCES niños(id) ON DELETE CASCADE,
+    nombre TEXT,
+    modelo TEXT,
+    mac_address TEXT,
+    wifi_ssid TEXT,
+    estado TEXT DEFAULT 'vinculado',
+    last_seen TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- ==========================================
 -- ROW LEVEL SECURITY (RLS)
 -- ==========================================
@@ -84,6 +103,7 @@ ALTER TABLE sesiones_biometria ENABLE ROW LEVEL SECURITY;
 ALTER TABLE eventos_actividad ENABLE ROW LEVEL SECURITY;
 ALTER TABLE juegos_completados ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ejercicios_respiracion ENABLE ROW LEVEL SECURITY;
+ALTER TABLE dispositivos ENABLE ROW LEVEL SECURITY;
 
 -- Políticas para `usuarios`
 -- Un usuario puede ver y editar su propio perfil
@@ -115,6 +135,16 @@ USING (niño_id IN (SELECT id FROM niños WHERE tutor_id = auth.uid()));
 
 -- ejercicios_respiracion
 CREATE POLICY "Tutores ven ejercicios de sus niños" ON ejercicios_respiracion FOR SELECT
+USING (niño_id IN (SELECT id FROM niños WHERE tutor_id = auth.uid()));
+
+-- dispositivos: el tutor gestiona solo los dispositivos de sus niños
+CREATE POLICY "Tutores ven dispositivos de sus niños" ON dispositivos FOR SELECT
+USING (niño_id IN (SELECT id FROM niños WHERE tutor_id = auth.uid()));
+CREATE POLICY "Tutores vinculan dispositivos a sus niños" ON dispositivos FOR INSERT
+WITH CHECK (niño_id IN (SELECT id FROM niños WHERE tutor_id = auth.uid()));
+CREATE POLICY "Tutores actualizan dispositivos de sus niños" ON dispositivos FOR UPDATE
+USING (niño_id IN (SELECT id FROM niños WHERE tutor_id = auth.uid()));
+CREATE POLICY "Tutores eliminan dispositivos de sus niños" ON dispositivos FOR DELETE
 USING (niño_id IN (SELECT id FROM niños WHERE tutor_id = auth.uid()));
 
 -- (La inserción biométrica desde la pulsera se asume que se hará con el service_role key o un rol específico que salta RLS)

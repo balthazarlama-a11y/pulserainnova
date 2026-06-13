@@ -4,16 +4,14 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { SIMULATION_ONLY } from "@/lib/simulationMode";
 
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const { user, loading, supabase } = useAuth();
-  const showAuthActions = !SIMULATION_ONLY;
+  const showAuthActions = true;
 
   const handleSignOut = async () => {
-    if (SIMULATION_ONLY) return;
     await supabase.auth.signOut();
     router.push("/sign-in");
     router.refresh();

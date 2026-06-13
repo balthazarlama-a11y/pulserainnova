@@ -23,15 +23,15 @@ export default function OnboardingClient() {
       if (!childName) return;
       setLoading(true);
       
-      const birthYear = new Date().getFullYear() - parseInt(childAge || "8");
-      const fakeBirthDate = `${birthYear}-01-01`;
+      const edad = childAge ? parseInt(childAge) : null;
 
       const { error } = await supabase.from("niños").insert([{
         nombre: childName,
         tutor_id: user.id,
-        fecha_nacimiento: fakeBirthDate
+        edad,
+        avatar: (childName[0] || "?").toUpperCase(),
       }]);
-      
+
       setLoading(false);
       if (!error) {
         setStep(3);
@@ -39,7 +39,7 @@ export default function OnboardingClient() {
         console.error("Error creating child:", error);
       }
     } else if (step === 3) {
-      window.location.assign("/dashboard");
+      window.location.assign("/pairing");
     }
   };
 
@@ -68,7 +68,7 @@ export default function OnboardingClient() {
                   id="childName"
                   value={childName}
                   onChange={(e) => setChildName(e.target.value)}
-                  placeholder="Ej. Simón"
+                  placeholder="Ej. Lucía"
                 />
               </div>
               <div className="space-y-2">
@@ -91,15 +91,20 @@ export default function OnboardingClient() {
         {step === 3 && (
           <div className="space-y-6 text-center">
             <div className="w-16 h-16 bg-calm/20 text-calm rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">⌚</div>
-            <h2 className="text-xl font-display font-semibold">Vincular Pulsera</h2>
-            <p className="text-sm text-ink-muted">Enciende la pulsera CalmBand y colócala cerca. Se emparejará automáticamente a la red.</p>
-            <div className="py-8">
-              <div className="w-12 h-12 border-4 border-calm/30 border-t-calm rounded-full animate-spin mx-auto"></div>
-              <p className="text-xs text-ink-faint mt-4 uppercase tracking-widest font-semibold">Buscando dispositivo...</p>
-            </div>
-            <Button onClick={handleNext} className="w-full border-line text-ink-dim hover:text-ink" variant="outline">
-              Simular vinculación exitosa
+            <h2 className="text-xl font-display font-semibold">Vincular pulsera</h2>
+            <p className="text-sm text-ink-muted">
+              ¡Perfil creado! Ahora conecta la pulsera de {childName || "tu niño"} a la red WiFi
+              para empezar a recibir sus datos.
+            </p>
+            <Button onClick={handleNext} className="w-full mt-2">
+              Conectar pulsera y WiFi
             </Button>
+            <button
+              onClick={() => window.location.assign("/dashboard")}
+              className="w-full text-sm text-ink-dim hover:text-ink mt-1"
+            >
+              Lo haré más tarde
+            </button>
           </div>
         )}
       </Card>

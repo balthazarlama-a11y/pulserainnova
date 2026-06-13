@@ -1,15 +1,7 @@
 "use client";
 
-import { SimulationProvider } from "@/lib/simulationContext";
-import SimulationFAB from "@/components/simulation/SimulationFAB";
-import SimulationPanel from "@/components/simulation/SimulationPanel";
+import { PeopleProvider } from "@/lib/peopleContext";
 
 export default function ClientProviders({ children }) {
-  return (
-    <SimulationProvider>
-      {children}
-      <SimulationFAB />
-      <SimulationPanel />
-    </SimulationProvider>
-  );
+  return <PeopleProvider>{children}</PeopleProvider>;
 }
