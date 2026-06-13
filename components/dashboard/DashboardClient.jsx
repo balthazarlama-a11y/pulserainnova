@@ -110,42 +110,89 @@ const RangeBar = ({ min, max, value, zones, markerColor }) => {
   );
 };
 
-// ─── Tarjeta de métrica ───────────────────────────────────────────────────────
-const MetricCard = ({ label, value, unit, valueColor, delta, scale, timestamp }) => (
-  <div className="card p-5">
+// ─── Sub-métrica (pie de la tarjeta de estado) ───────────────────────────────
+const SubStat = ({ label, value, unit, color }) => (
+  <div className="min-w-0">
     <CardLabel>{label}</CardLabel>
-    <div className="flex items-end justify-between gap-2 mt-2">
-      <div className="flex items-baseline gap-1.5">
-        <span className="font-display font-bold text-[32px] leading-none tracking-tight"
-          style={{ color: valueColor || "var(--ink)" }}>
-          {value}
-        </span>
-        {unit && <span className="text-[13px] font-medium text-ink-dim">{unit}</span>}
-      </div>
-      {delta && (
-        <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0"
-          style={{ color: delta.color, background: `${delta.color}1A` }}
-          title={`Cambio respecto a ayer: ${delta.text}`}>
-          <span aria-hidden="true">{delta.up ? "▲" : "▼"}</span>
-          {delta.text}
-        </span>
-      )}
+    <div className="mt-1.5 flex items-baseline gap-1">
+      <span className="font-display font-bold text-[22px] leading-none tracking-tight truncate"
+        style={{ color: color || "var(--ink)" }}>
+        {value}
+      </span>
+      {unit && <span className="text-[12px] font-medium text-ink-dim">{unit}</span>}
     </div>
-
-    {scale && (
-      <RangeBar min={scale.min} max={scale.max} value={scale.value}
-        zones={scale.zones} markerColor={valueColor || "var(--ink)"}/>
-    )}
-
-    {timestamp && (
-      <div className="flex items-center mt-1">
-        <span className="inline-flex items-center gap-1 text-[11px] text-ink-dim">
-          <IconClock size={11} aria-hidden="true"/> {timestamp}
-        </span>
-      </div>
-    )}
   </div>
 );
+
+// ─── Tarjeta de estado (jerarquía principal: nivel de calma en vivo) ──────────
+const HeroStatus = ({ nombre, hasReading, calma, calmaDelta, bpm, sleep, state, lastReading }) => {
+  const calmaC = hasReading ? calmaColor(calma) : "var(--ink-dim)";
+  const deltaC = calmaDelta >= 0 ? SEMANTIC_COLORS.calm : SEMANTIC_COLORS.attention;
+  return (
+    <div className="card p-6 sm:p-7 flex flex-col">
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <div className="inline-flex items-center gap-2 text-[11px] uppercase tracking-wider font-semibold text-brand">
+          <IconActivity size={12} aria-hidden="true"/> Estado ahora
+        </div>
+        <span className="inline-flex items-center gap-1 text-[11px] text-ink-dim">
+          <IconClock size={11} aria-hidden="true"/> {relativeTime(lastReading)}
+        </span>
+      </div>
+
+      {hasReading ? (
+        <>
+          <div className="flex items-end gap-3 mb-1">
+            <span className="font-display font-bold leading-[0.82] tracking-tight"
+              style={{ fontSize: "clamp(3.4rem, 9vw, 4.6rem)", color: calmaC }}>
+              {calma}
+            </span>
+            <div className="pb-1.5 flex flex-col gap-1.5 min-w-0">
+              <span className="text-[13px] text-ink-dim font-medium">
+                de calma <span className="text-ink-faint">/ 100</span>
+              </span>
+              {calmaDelta != null && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full w-fit"
+                  style={{ color: deltaC, background: `${deltaC}1A` }}
+                  title="Cambio respecto a ayer">
+                  <span aria-hidden="true">{calmaDelta >= 0 ? "▲" : "▼"}</span>
+                  {Math.abs(calmaDelta)} vs ayer
+                </span>
+              )}
+            </div>
+          </div>
+          <RangeBar min={0} max={100} value={calma} markerColor={calmaC}
+            zones={[
+              { from: 0,  to: 40,  color: SEMANTIC_COLORS.danger },
+              { from: 40, to: 65,  color: SEMANTIC_COLORS.attention },
+              { from: 65, to: 100, color: SEMANTIC_COLORS.calm },
+            ]}/>
+          <div className="inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-full px-2.5 py-1 w-fit mt-1"
+            style={{ color: state.hex, background: `${state.hex}1A` }}>
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: state.hex }} aria-hidden="true"/>
+            {state.label}
+          </div>
+        </>
+      ) : (
+        <div className="flex flex-col items-start gap-3 py-4">
+          <div className="flex items-center gap-2.5 text-ink-muted">
+            <span className="w-2.5 h-2.5 rounded-full bg-brand"
+              style={{ animation: "simPulseSmall 1.6s ease-in-out infinite" }} aria-hidden="true"/>
+            <span className="text-sm font-semibold">Esperando la primera lectura…</span>
+          </div>
+          <p className="text-[13px] text-ink-faint leading-relaxed">
+            Cuando la pulsera de {nombre || "la persona"} envíe datos, verás aquí su nivel de calma en vivo.
+          </p>
+        </div>
+      )}
+
+      <div className="mt-auto pt-5 border-t border-line grid grid-cols-2 gap-4">
+        <SubStat label="Ritmo cardíaco" value={bpm != null ? bpm : "—"}
+          unit={bpm != null ? "lpm" : null} color={bpm != null ? bpmColor(bpm) : "var(--ink-dim)"}/>
+        <SubStat label="Sueño" value={sleep || "—"}/>
+      </div>
+    </div>
+  );
+};
 
 // ─── Gráfico 24h (serie real, escala temporal) ────────────────────────────────
 const StressChart = ({ series }) => {
@@ -700,74 +747,43 @@ export default function DashboardClient({ user, profile }) {
 
       <main className="dashboard-main relative z-[2] max-w-[1440px] px-4 sm:px-6 md:px-8 lg:px-10 lg:ml-[72px] py-6 sm:py-8 lg:py-10 pb-24">
 
-        {/* Barra superior */}
-        <div className="flex flex-col gap-5 mb-8 sm:mb-10">
-          <div className="flex flex-col gap-2">
-            <CardLabel className="tracking-[0.22em]">{greeting} · {parentName}</CardLabel>
-            <h1 className="font-display font-medium m-0 leading-[1.02]"
-              style={{ fontSize: "clamp(2.25rem, 6vw, 4rem)", letterSpacing: "-0.025em" }}>
-              Así está <span className="text-brand font-bold">{selectedPerson?.nombre || "—"}</span> hoy.
-            </h1>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2.5">
-            <ConnectionStatus level={connection}/>
-            <PersonSwitcher people={people} selectedId={selectedId} onSelect={selectPerson}/>
-            <Link href="/kids"
-              className="ml-auto sm:ml-0 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-[13px] font-medium no-underline text-brand bg-brand/10 border border-brand/25 hover:bg-brand/20 hover:border-brand/40 transition-colors">
-              Abrir vista de {selectedPerson?.nombre || "persona"} <IconArrowRight size={12} aria-hidden="true"/>
-            </Link>
+        {/* Encabezado */}
+        <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 mb-7 sm:mb-9 animate-slide-up">
+          <div className="flex items-center gap-3.5 min-w-0">
             {selectedPerson && (
-              <div className="w-[38px] h-[38px] rounded-full flex items-center justify-center font-semibold text-sm shrink-0 text-ink-on-accent"
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg shrink-0 text-ink-on-accent"
                 style={{ background: "linear-gradient(135deg, #B8A4FF, #8B7FD8)" }}
                 title={selectedPerson.nombre} aria-label={`Avatar de ${selectedPerson.nombre}`}>
                 {(selectedPerson.avatar || selectedPerson.nombre?.[0] || "?").toUpperCase()}
               </div>
             )}
+            <div className="min-w-0">
+              <CardLabel className="tracking-[0.18em]">{greeting} · {parentName}</CardLabel>
+              <h1 className="font-display font-bold tracking-tight text-ink leading-[1.05] truncate mt-0.5"
+                style={{ fontSize: "clamp(1.55rem, 4vw, 2.35rem)" }}>
+                {selectedPerson?.nombre || "—"}
+              </h1>
+            </div>
           </div>
-        </div>
+          <div className="flex items-center gap-2.5 shrink-0">
+            <ConnectionStatus level={connection}/>
+            <PersonSwitcher people={people} selectedId={selectedId} onSelect={selectPerson}/>
+          </div>
+        </header>
 
-        {/* Fila 1: Métricas + Recomendaciones */}
-        <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-5 lg:gap-6 mb-5 lg:mb-6">
-          <div className="flex flex-col gap-4">
-            <MetricCard
-              label="Nivel de calma · hoy"
-              value={calmaHoy != null ? calmaHoy : "—"}
-              unit={calmaHoy != null ? "/ 100" : null}
-              valueColor={calmaHoy != null ? calmaColor(calmaHoy) : "var(--ink-dim)"}
-              delta={calmaDelta != null ? {
-                up: calmaDelta >= 0,
-                text: `${Math.abs(calmaDelta)} vs ayer`,
-                color: calmaDelta >= 0 ? SEMANTIC_COLORS.calm : SEMANTIC_COLORS.attention,
-              } : null}
-              scale={calmaHoy != null ? {
-                min: 0, max: 100, value: calmaHoy,
-                zones: [
-                  { from: 0,  to: 40,  color: SEMANTIC_COLORS.danger },
-                  { from: 40, to: 65,  color: SEMANTIC_COLORS.attention },
-                  { from: 65, to: 100, color: SEMANTIC_COLORS.calm },
-                ],
-              } : null}
-              timestamp={relativeTime(lastReading)}
-            />
-            <MetricCard
-              label="Ritmo cardíaco"
-              value={bpm != null ? bpm : "—"}
-              unit={bpm != null ? "lpm" : null}
-              valueColor={bpm != null ? bpmColor(bpm) : "var(--ink-dim)"}
-              scale={bpm != null ? {
-                min: 40, max: 140, value: bpm,
-                zones: [{ from: 20, to: 60, color: SEMANTIC_COLORS.calm }],
-              } : null}
-              timestamp={relativeTime(lastReading)}
-            />
-            <MetricCard
-              label="Sueño"
-              value={selectedPerson?.sueno || "—"}
-              valueColor="var(--ink)"
-              timestamp={selectedPerson?.sueno ? "anoche" : "sin datos"}
-            />
-          </div>
+        {/* Estado + Recomendaciones */}
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,380px)_1fr] gap-5 lg:gap-6 mb-5 lg:mb-6 items-stretch animate-slide-up"
+          style={{ animationDelay: "60ms", animationFillMode: "both" }}>
+          <HeroStatus
+            nombre={selectedPerson?.nombre}
+            hasReading={hasReading}
+            calma={calmaHoy}
+            calmaDelta={calmaDelta}
+            bpm={bpm}
+            sleep={selectedPerson?.sueno}
+            state={state}
+            lastReading={lastReading}
+          />
           <RecommendationPanel
             stress={hasReading ? stress : 30}
             bpm={bpm}
@@ -779,7 +795,8 @@ export default function DashboardClient({ user, profile }) {
         </div>
 
         {/* Fila 2: Gráfico 24h */}
-        <div className="card p-6 sm:p-7 mb-5 lg:mb-6">
+        <div className="card p-6 sm:p-7 mb-5 lg:mb-6 animate-slide-up"
+          style={{ animationDelay: "120ms", animationFillMode: "both" }}>
           <div className="flex justify-between items-center mb-5">
             <div>
               <CardLabel>Últimas 24 horas</CardLabel>
@@ -797,7 +814,8 @@ export default function DashboardClient({ user, profile }) {
         </div>
 
         {/* Fila 3: Semana + Actividad */}
-        <div className="grid grid-cols-1 md:grid-cols-[1.3fr_1fr] gap-5 lg:gap-6 mb-5 lg:mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-[1.3fr_1fr] gap-5 lg:gap-6 mb-5 lg:mb-6 animate-slide-up"
+          style={{ animationDelay: "180ms", animationFillMode: "both" }}>
           <div className="card p-6 sm:p-7">
             <div className="flex justify-between items-start mb-5 gap-3">
               <div>
@@ -839,7 +857,8 @@ export default function DashboardClient({ user, profile }) {
         </div>
 
         {/* Fila 4: Hub de navegación */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 animate-slide-up"
+          style={{ animationDelay: "240ms", animationFillMode: "both" }}>
           <HubCard href="/kids"     icon={<IconHeart size={22}/>}    title={`Vista de ${selectedPerson?.nombre || "persona"}`} desc="Personaje animado, ejercicios de respiración y minijuegos." accent={SEMANTIC_COLORS.brand}/>
           <HubCard href="/pairing"  icon={<IconWatch size={22}/>}    title="Conexión"  desc="Vincula una pulsera CalmBand a una persona y red WiFi." accent={SEMANTIC_COLORS.calm}/>
           <HubCard href="/schedule" icon={<IconCalendar size={22}/>} title="Horario"   desc="Calendario diario para cruzar con los datos de la pulsera." accent={SEMANTIC_COLORS.attention}/>
