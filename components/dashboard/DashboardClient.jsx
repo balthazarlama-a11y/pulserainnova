@@ -659,6 +659,9 @@ export default function DashboardClient({ user, profile }) {
     loadAll();
 
     const interval = setInterval(checkStatus, 30000);
+    // Sondeo de respaldo: garantiza biometría "en vivo" aunque Supabase Realtime
+    // no esté habilitado para la tabla. Refresca la última lectura y la serie 24h.
+    const poll = setInterval(loadAll, 20000);
 
     const channel = supabase
       .channel(`biometria-${ninoId}`)
@@ -679,6 +682,7 @@ export default function DashboardClient({ user, profile }) {
     return () => {
       active = false;
       clearInterval(interval);
+      clearInterval(poll);
       supabase.removeChannel(channel);
     };
   }, [supabase, ninoId]);

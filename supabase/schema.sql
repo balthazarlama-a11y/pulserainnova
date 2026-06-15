@@ -147,7 +147,23 @@ USING (niño_id IN (SELECT id FROM niños WHERE tutor_id = auth.uid()));
 CREATE POLICY "Tutores eliminan dispositivos de sus niños" ON dispositivos FOR DELETE
 USING (niño_id IN (SELECT id FROM niños WHERE tutor_id = auth.uid()));
 
--- (La inserción biométrica desde la pulsera se asume que se hará con el service_role key o un rol específico que salta RLS)
+-- (La inserción biométrica desde la pulsera se hace con el service_role key,
+--  que salta RLS. Por eso no existe política de INSERT para anon/authenticated
+--  en sesiones_biometria: el panel solo lee, la pulsera escribe vía service_role.)
+
+-- ==========================================
+-- REALTIME
+-- ==========================================
+-- El dashboard se suscribe a INSERT en sesiones_biometria para mostrar la
+-- biometría en vivo. Hay que añadir la tabla a la publicación de Realtime.
+-- (Idempotente: ignora el error si ya está añadida.)
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE sesiones_biometria;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+  WHEN undefined_object THEN NULL; -- la publicación no existe en este entorno
+END $$;
 
 -- ==========================================
 -- TRIGGER DE AUTENTICACIÓN

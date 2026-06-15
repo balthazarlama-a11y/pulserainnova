@@ -46,6 +46,8 @@ export const config = {
     "/history/:path*",
     "/sign-in",
     "/sign-up",
-    "/((?!_next/static|_next/image|favicon.ico).*)"
+    // Excluimos /api (la pulsera ingiere sin sesión y no debe pagar el coste de
+    // getUser) y los assets estáticos. El resto pasa por la comprobación de auth.
+    "/((?!api|_next/static|_next/image|favicon.ico).*)"
   ]
 };
