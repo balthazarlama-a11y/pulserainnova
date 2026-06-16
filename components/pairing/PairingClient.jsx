@@ -38,6 +38,26 @@ export default function PairingClient() {
   const [devModel, setDevModel] = useState("");
   const [devMac, setDevMac] = useState("");
 
+  // Detección de pulseras pendientes (auto-registradas por su MAC)
+  const [scanning, setScanning] = useState(false);
+  const [pending, setPending] = useState([]);
+  const [scanned, setScanned] = useState(false);
+
+  const scanForBands = async () => {
+    setScanning(true);
+    setScanned(false);
+    try {
+      const res = await fetch("/api/pairing/pending");
+      const data = await res.json();
+      setPending(res.ok ? data.devices || [] : []);
+    } catch {
+      setPending([]);
+    } finally {
+      setScanning(false);
+      setScanned(true);
+    }
+  };
+
   // WiFi
   const [ssid, setSsid] = useState("");
   const [password, setPassword] = useState("");
@@ -215,7 +235,39 @@ export default function PairingClient() {
                   </div>
                 </div>
                 <div>
-                  <label className={labelCls}>Dirección MAC (opcional)</label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className={labelCls + " mb-0"}>Dirección MAC</label>
+                    <button type="button" onClick={scanForBands} disabled={scanning}
+                      className="text-[12px] font-medium text-brand inline-flex items-center gap-1.5 hover:opacity-80 disabled:opacity-50 transition">
+                      <IconRefresh size={13} className={scanning ? "animate-spin" : ""}/>
+                      {scanning ? "Buscando…" : "Detectar pulseras"}
+                    </button>
+                  </div>
+
+                  {scanned && pending.length > 0 && (
+                    <div className="mb-2.5 space-y-1.5">
+                      {pending.map((d) => (
+                        <button key={d.mac_address} type="button"
+                          onClick={() => setDevMac(d.mac_address)}
+                          className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-left transition-colors ${
+                            devMac === d.mac_address ? "bg-brand/12 border-brand/35" : "bg-surface border-line hover:bg-surface-elevated"
+                          }`}>
+                          <IconWatch size={16} className="text-brand shrink-0"/>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[13px] font-medium font-mono truncate">{d.mac_address}</div>
+                            <div className="text-[11px] text-ink-faint">Pulsera detectada · lista para vincular</div>
+                          </div>
+                          {devMac === d.mac_address && <IconCheck size={15} className="text-brand shrink-0"/>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {scanned && pending.length === 0 && (
+                    <p className="text-[11px] text-ink-faint mb-2 -mt-0.5">
+                      No se detectaron pulseras encendidas. Asegúrate de que esté conectada a WiFi y reintenta.
+                    </p>
+                  )}
+
                   <input className={inputCls} placeholder="F4:8E:38:CB:A3:F2" value={devMac} onChange={(e) => setDevMac(e.target.value)}/>
                 </div>
               </div>

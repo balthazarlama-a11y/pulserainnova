@@ -48,14 +48,31 @@ export async function POST(request) {
     ninoId = created.id;
   }
 
-  // 2. Insertar el dispositivo vinculado.
+  // 2. Vincular el dispositivo a la persona.
+  // Si hay MAC, "reclamamos" la pulsera que ya se auto-registró (upsert por MAC
+  // vía la función claim_device, que valida que la persona sea del tutor).
+  // Sin MAC (vinculación manual sin hardware) caemos al insert directo.
+  if (mac) {
+    const { error: claimError } = await supabase.rpc("claim_device", {
+      p_mac: mac,
+      p_nino_id: ninoId,
+      p_nombre: devNombre || "CalmBand",
+      p_wifi: wifiSsid || null,
+    });
+    if (claimError) {
+      console.error("[pairing] error en claim_device:", claimError);
+      return NextResponse.json({ error: "No se pudo vincular la pulsera" }, { status: 500 });
+    }
+    return NextResponse.json({ success: true, ninoId, mac }, { status: 201 });
+  }
+
   const { data: dispositivo, error: deviceError } = await supabase
     .from("dispositivos")
     .insert({
       "niño_id": ninoId,
       nombre: devNombre || "CalmBand",
       modelo: modelo || null,
-      mac_address: mac || null,
+      mac_address: null,
       wifi_ssid: wifiSsid || null,
       estado: "vinculado",
       last_seen: new Date().toISOString(),
