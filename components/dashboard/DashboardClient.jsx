@@ -857,7 +857,7 @@ export default function DashboardClient({ user, profile }) {
         </div>
 
         {/* Fila 4: Hub de navegación */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 animate-slide-up"
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6 animate-slide-up"
           style={{ animationDelay: "240ms", animationFillMode: "both" }}>
           <HubCard href="/kids"     icon={<IconHeart size={22}/>}    title={`Vista de ${selectedPerson?.nombre || "persona"}`} desc="Personaje animado, ejercicios de respiración y minijuegos." accent={SEMANTIC_COLORS.brand}/>
           <HubCard href="/pairing"  icon={<IconWatch size={22}/>}    title="Conexión"  desc="Vincula una pulsera CalmBand a una persona y red WiFi." accent={SEMANTIC_COLORS.calm}/>
