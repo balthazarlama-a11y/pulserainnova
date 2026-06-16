@@ -19,6 +19,7 @@ import {
   stressFromCalma, fetchLatestSession, fetch24hSessions, toStressSeries,
   fetchWeeklyData, fetchTodayActivity,
 } from "@/lib/biometria";
+import { fetchDeviceForChild } from "@/lib/devices";
 
 // Iconos por clave para recomendaciones y actividad. Definidos a nivel de módulo
 // para no reconstruir los elementos en cada render.
@@ -634,24 +635,29 @@ export default function DashboardClient({ user, profile }) {
     };
 
     const loadAll = async () => {
-      const [latest, sessions, week, acts] = await Promise.all([
+      const [latest, sessions, week, acts, device] = await Promise.all([
         fetchLatestSession(supabase, ninoId),
         fetch24hSessions(supabase, ninoId),
         fetchWeeklyData(supabase, ninoId),
         fetchTodayActivity(supabase, ninoId),
+        fetchDeviceForChild(supabase, ninoId),
       ]);
       if (!active) return;
 
+      // El último "latido" es el más reciente entre la última lectura biométrica
+      // y el last_seen del dispositivo, para reflejar el estado real al abrir la app.
+      const deviceSeen = device?.last_seen ? new Date(device.last_seen).getTime() : 0;
+      const sessionSeen = latest?.timestamp ? new Date(latest.timestamp).getTime() : 0;
+      lastHeartbeatRef.current = Math.max(deviceSeen, sessionSeen);
+
       if (latest?.timestamp) {
-        lastHeartbeatRef.current = new Date(latest.timestamp).getTime();
         if (latest.bpm != null) setBpm(latest.bpm);
         const s = stressFromCalma(latest.nivel_calma);
         if (s != null) setStress(s);
-        checkStatus();
       } else {
         setStress(null); setBpm(null);
-        setConnection("disconnected");
       }
+      checkStatus();
       setSeries(toStressSeries(sessions));
       setWeekly(week);
       setActivity(acts);
@@ -676,10 +682,25 @@ export default function DashboardClient({ user, profile }) {
         })
       .subscribe();
 
+    // Estado de conexión de la pulsera en vivo (aprovisionamiento, heartbeats).
+    const deviceChannel = supabase
+      .channel(`dispositivos-${ninoId}`)
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "dispositivos", filter: `niño_id=eq.${ninoId}` },
+        (payload) => {
+          const seen = payload.new?.last_seen;
+          if (seen) {
+            lastHeartbeatRef.current = Math.max(lastHeartbeatRef.current, new Date(seen).getTime());
+            checkStatus();
+          }
+        })
+      .subscribe();
+
     return () => {
       active = false;
       clearInterval(interval);
       supabase.removeChannel(channel);
+      supabase.removeChannel(deviceChannel);
     };
   }, [supabase, ninoId]);
 

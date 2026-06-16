@@ -91,6 +91,24 @@ CREATE TABLE IF NOT EXISTS dispositivos (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Columnas para AUTO-RECONEXIÓN WiFi y estado del dispositivo.
+-- wifi_password_cifrada: contraseña de la red cifrada (AES-256-GCM, ver lib/wifiCrypto.js).
+--   Permite "recordar" la red y re-aprovisionar la pulsera automáticamente cuando
+--   el niño entra al colegio, sin que el tutor vuelva a escribir nada.
+-- auto_conexion: si la pulsera debe reconectarse sola a la última red conocida.
+-- ultima_conexion: marca de tiempo del último aprovisionamiento/heartbeat del hardware.
+ALTER TABLE dispositivos ADD COLUMN IF NOT EXISTS wifi_password_cifrada TEXT;
+ALTER TABLE dispositivos ADD COLUMN IF NOT EXISTS auto_conexion BOOLEAN DEFAULT true;
+ALTER TABLE dispositivos ADD COLUMN IF NOT EXISTS ultima_conexion TIMESTAMP WITH TIME ZONE;
+
+-- Búsqueda rápida por MAC: la pulsera solo conoce su MAC al arrancar y la usa
+-- para aprovisionarse (obtener su red + niño asignado) sin pasos manuales.
+-- Índice único NO parcial para que el upsert por MAC (ON CONFLICT) lo infiera.
+-- Postgres trata los NULL como distintos, así que se permiten varias pulseras
+-- todavía sin MAC asignada.
+CREATE UNIQUE INDEX IF NOT EXISTS dispositivos_mac_unique
+  ON dispositivos (mac_address);
+
 -- ==========================================
 -- ROW LEVEL SECURITY (RLS)
 -- ==========================================
@@ -173,3 +191,21 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- ==========================================
+-- REALTIME
+-- ==========================================
+-- El dashboard del tutor escucha cambios en vivo: lecturas biométricas nuevas
+-- y el estado de conexión de la pulsera. Sin esto, los datos no aparecerían
+-- automáticamente al abrir la app.
+DO $$
+BEGIN
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE sesiones_biometria;
+  EXCEPTION WHEN duplicate_object THEN NULL;
+  END;
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE dispositivos;
+  EXCEPTION WHEN duplicate_object THEN NULL;
+  END;
+END $$;

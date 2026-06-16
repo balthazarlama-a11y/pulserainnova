@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { encryptWifiPassword } from "@/lib/wifiCrypto";
 
 // Persiste el emparejamiento de una pulsera: asigna el dispositivo a una persona
 // (creándola si viene `newPerson`) y a una red WiFi. Usa el cliente con cookies,
 // por lo que la sesión del usuario aplica RLS (no service_role).
 //
-// La contraseña WiFi NO se persiste: se "provisiona" al hardware en el momento
-// del emparejamiento. Solo guardamos el SSID para mostrarlo en el panel.
+// AUTO-RECONEXIÓN: la contraseña WiFi se cifra (AES-256-GCM) y se guarda junto
+// al SSID. Así la red queda "recordada" y la pulsera puede re-aprovisionarse
+// sola (endpoint /api/provision) cuando el niño entra al colegio, sin que el
+// tutor vuelva a configurar nada. La contraseña nunca se guarda ni se devuelve
+// en claro al navegador.
 export async function POST(request) {
   const supabase = createClient();
 
@@ -24,7 +28,14 @@ export async function POST(request) {
   }
 
   let { ninoId, newPerson, device } = body;
-  const { nombre: devNombre, modelo, mac, wifiSsid } = device || {};
+  const {
+    nombre: devNombre,
+    modelo,
+    mac,
+    wifiSsid,
+    wifiPassword,
+    autoConexion = true,
+  } = device || {};
 
   // 1. Resolver/crear la persona (niño).
   if (!ninoId) {
@@ -48,25 +59,36 @@ export async function POST(request) {
     ninoId = created.id;
   }
 
-  // 2. Insertar el dispositivo vinculado.
-  const { data: dispositivo, error: deviceError } = await supabase
-    .from("dispositivos")
-    .insert({
-      "niño_id": ninoId,
-      nombre: devNombre || "CalmBand",
-      modelo: modelo || null,
-      mac_address: mac || null,
-      wifi_ssid: wifiSsid || null,
-      estado: "vinculado",
-      last_seen: new Date().toISOString(),
-    })
-    .select("*")
-    .single();
+  // Cifra la contraseña para "recordar" la red (auto-reconexión). Nunca en claro.
+  const wifiPasswordCifrada = encryptWifiPassword(wifiPassword);
+
+  const deviceRow = {
+    "niño_id": ninoId,
+    nombre: devNombre || "CalmBand",
+    modelo: modelo || null,
+    mac_address: mac || null,
+    wifi_ssid: wifiSsid || null,
+    wifi_password_cifrada: wifiPasswordCifrada,
+    auto_conexion: autoConexion !== false,
+    estado: "vinculado",
+    last_seen: new Date().toISOString(),
+  };
+
+  // 2. Insertar/actualizar el dispositivo. Si la pulsera (por MAC) ya existe,
+  // hacemos upsert para que la red recordada se actualice en vez de duplicar.
+  const query = mac
+    ? supabase.from("dispositivos").upsert(deviceRow, { onConflict: "mac_address" })
+    : supabase.from("dispositivos").insert(deviceRow);
+
+  const { data: dispositivo, error: deviceError } = await query.select("*").single();
 
   if (deviceError) {
-    console.error("[pairing] error insertando dispositivo:", deviceError);
+    console.error("[pairing] error guardando dispositivo:", deviceError);
     return NextResponse.json({ error: "No se pudo vincular el dispositivo" }, { status: 500 });
   }
+
+  // No devolvemos la contraseña cifrada al cliente.
+  if (dispositivo) delete dispositivo.wifi_password_cifrada;
 
   return NextResponse.json({ success: true, ninoId, dispositivo }, { status: 201 });
 }

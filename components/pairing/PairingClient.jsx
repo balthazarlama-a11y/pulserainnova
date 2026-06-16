@@ -41,6 +41,7 @@ export default function PairingClient() {
   // WiFi
   const [ssid, setSsid] = useState("");
   const [password, setPassword] = useState("");
+  const [autoConexion, setAutoConexion] = useState(true);
 
   const personReady = mode === "existing" ? !!selectedChildId : newName.trim().length > 0;
   const canSubmit = personReady && devName.trim() && ssid.trim();
@@ -58,7 +59,10 @@ export default function PairingClient() {
         modelo: devModel.trim() || null,
         mac: devMac.trim() || null,
         wifiSsid: ssid.trim(),
-        // La contraseña WiFi se provisiona al hardware, no se persiste.
+        // La contraseña se cifra en el servidor para "recordar" la red y que la
+        // pulsera se reconecte sola al entrar al colegio (auto-reconexión).
+        wifiPassword: password || null,
+        autoConexion,
       },
     };
 
@@ -234,8 +238,23 @@ export default function PairingClient() {
                 <div>
                   <label className={labelCls}>Contraseña WiFi</label>
                   <input className={inputCls} type="password" placeholder="Contraseña de la red" value={password} onChange={(e) => setPassword(e.target.value)}/>
-                  <p className="text-[11px] text-ink-faint mt-1.5">La contraseña se envía a la pulsera y no se almacena en la cuenta.</p>
+                  <p className="text-[11px] text-ink-faint mt-1.5">Se guarda cifrada para recordar la red. Nunca se muestra en claro.</p>
                 </div>
+
+                {/* Auto-reconexión: la pulsera se reconecta sola a esta red */}
+                <button type="button" onClick={() => setAutoConexion((v) => !v)}
+                  className="w-full flex items-center justify-between gap-3 p-3 rounded-xl bg-surface border border-line text-left hover:bg-surface-elevated transition-colors">
+                  <div className="min-w-0">
+                    <div className="text-[13px] font-medium text-ink">Reconexión automática</div>
+                    <div className="text-[11px] text-ink-faint leading-snug mt-0.5">
+                      La pulsera se conectará sola a esta red al entrar al colegio.
+                    </div>
+                  </div>
+                  <span aria-hidden="true"
+                    className={`shrink-0 w-10 h-6 rounded-full p-0.5 transition-colors ${autoConexion ? "bg-brand" : "bg-line-strong"}`}>
+                    <span className={`block w-5 h-5 rounded-full bg-white transition-transform ${autoConexion ? "translate-x-4" : "translate-x-0"}`}/>
+                  </span>
+                </button>
               </div>
 
               <button onClick={handleConnect} disabled={!canSubmit}
