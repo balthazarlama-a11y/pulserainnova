@@ -58,12 +58,12 @@ export default function PairingClient() {
     }
   };
 
-  // WiFi
+  // WiFi: solo una etiqueta para el panel. La red se configura EN la pulsera por
+  // su portal cautivo (CalmBand-XXXX); la app no provisiona credenciales.
   const [ssid, setSsid] = useState("");
-  const [password, setPassword] = useState("");
 
   const personReady = mode === "existing" ? !!selectedChildId : newName.trim().length > 0;
-  const canSubmit = personReady && devName.trim() && ssid.trim();
+  const canSubmit = personReady && devName.trim();
 
   const handleConnect = async () => {
     if (!canSubmit) return;
@@ -77,8 +77,8 @@ export default function PairingClient() {
         nombre: devName.trim(),
         modelo: devModel.trim() || null,
         mac: devMac.trim() || null,
-        wifiSsid: ssid.trim(),
-        // La contraseña WiFi se provisiona al hardware, no se persiste.
+        wifiSsid: ssid.trim() || null,
+        // El WiFi se configura en la pulsera (portal cautivo); esto es solo etiqueta.
       },
     };
 
@@ -125,7 +125,7 @@ export default function PairingClient() {
               </div>
             </div>
             <h1 className="font-display font-medium m-0 mb-3 tracking-tight text-3xl sm:text-4xl text-brand">¡Vinculada!</h1>
-            <p className="text-ink-dim text-[15px]">La pulsera quedó asignada a la persona y la red WiFi. Volviendo al panel…</p>
+            <p className="text-ink-dim text-[15px]">La pulsera quedó asignada a la persona. Volviendo al panel…</p>
           </div>
         )}
 
@@ -274,19 +274,18 @@ export default function PairingClient() {
 
               <div className="h-px bg-line"/>
 
-              {/* ── WiFi ── */}
+              {/* ── Red WiFi (informativo) ── */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <IconWifi size={15} className="text-brand"/> Red WiFi
                 </div>
-                <div>
-                  <label className={labelCls}>Nombre de la red (SSID)</label>
-                  <input className={inputCls} placeholder="Ej. Colegio_Red_5G" value={ssid} onChange={(e) => setSsid(e.target.value)}/>
+                <div className="rounded-xl border border-line bg-surface px-3.5 py-3 text-[12px] text-ink-dim leading-relaxed">
+                  El WiFi se configura <strong className="text-ink">en la pulsera</strong>: encendela, conectate desde tu celular a su red{" "}
+                  <span className="font-mono text-brand">CalmBand-XXXX</span> y elegí tu red ahí. Cuando se conecta, aparece arriba en <strong className="text-ink">“Detectar pulseras”</strong>.
                 </div>
                 <div>
-                  <label className={labelCls}>Contraseña WiFi</label>
-                  <input className={inputCls} type="password" placeholder="Contraseña de la red" value={password} onChange={(e) => setPassword(e.target.value)}/>
-                  <p className="text-[11px] text-ink-faint mt-1.5">La contraseña se envía a la pulsera y no se almacena en la cuenta.</p>
+                  <label className={labelCls}>Nombre de la red (opcional · solo etiqueta)</label>
+                  <input className={inputCls} placeholder="Ej. WiFi del colegio" value={ssid} onChange={(e) => setSsid(e.target.value)}/>
                 </div>
               </div>
 

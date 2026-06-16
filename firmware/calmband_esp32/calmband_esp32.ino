@@ -40,18 +40,43 @@ MAX30105 particleSensor;
 String deviceMac;                 // "AA:BB:CC:DD:EE:FF" — identidad de la pulsera
 bool   sensorOk = false;
 
-// ── Cálculo de pulso (basado en el ejemplo HeartRate de SparkFun) ──
-const byte RATE_SIZE = 8;
-byte  rates[RATE_SIZE];
-byte  rateSpot = 0;
-long  lastBeat = 0;
-float beatsPerMinute = 0;
-int   beatAvg = 0;
+// ── Cálculo de pulso a partir de intervalos RR (ms) ──
+#define IR_FINGER_THRESHOLD 50000     // IR por debajo = no hay dedo
+#define RR_MIN_MS           333       // 180 bpm
+#define RR_MAX_MS           1500      // 40 bpm
+#define MIN_BEATS_TO_SEND   5         // latidos válidos antes de enviar (calentar)
 
-// RR intervals (ms) → HRV aprox (RMSSD).
-const byte RR_SIZE = 8;
-long rrIntervals[RR_SIZE];
-byte rrSpot = 0, rrCount = 0;
+const byte RR_SIZE = 10;
+long rr[RR_SIZE];                     // últimos intervalos RR, en orden cronológico
+byte rrCount = 0;
+long lastBeat = 0;
+
+// Inserta un intervalo RR manteniendo el orden (los más viejos se desplazan).
+void pushRR(long interval) {
+  if (rrCount < RR_SIZE) {
+    rr[rrCount++] = interval;
+  } else {
+    for (byte i = 1; i < RR_SIZE; i++) rr[i - 1] = rr[i];
+    rr[RR_SIZE - 1] = interval;
+  }
+}
+
+int bpmFromRR() {
+  if (rrCount == 0) return 0;
+  long sum = 0;
+  for (byte i = 0; i < rrCount; i++) sum += rr[i];
+  return (int)(60000.0 / (sum / (double)rrCount));   // media de los RR
+}
+
+int hrvFromRR() {                                    // RMSSD sobre RR consecutivos
+  if (rrCount < 2) return 0;
+  double s = 0;
+  for (byte i = 1; i < rrCount; i++) {
+    long d = rr[i] - rr[i - 1];
+    s += (double)d * d;
+  }
+  return (int)sqrt(s / (rrCount - 1));
+}
 
 unsigned long lastSend = 0;
 
@@ -85,20 +110,12 @@ void registerDevice() {
 }
 
 // ───────────────────────── Sensor / métricas ─────────────────────────
-int computeHRV() {
-  if (rrCount < 2) return 0;
-  double sumSq = 0; int n = 0;
-  for (byte i = 1; i < rrCount; i++) {
-    long d = rrIntervals[i] - rrIntervals[i - 1];
-    sumSq += (double)d * d; n++;
-  }
-  return n ? (int)sqrt(sumSq / n) : 0;
-}
-
+// Calma 0-100 (mayor = más calmado), derivada del PULSO: alto en reposo, baja
+// cuando sube el bpm. No usamos HRV (este sensor no lo mide de forma fiable y
+// saturaba la calma en 100). Rango pensado para que se mueva con el pulso real.
 int computeCalma(int bpm, int hrv) {
-  int fromBpm = map(constrain(bpm, 55, 130), 55, 130, 95, 20);
-  int fromHrv = map(constrain(hrv, 0, 80), 0, 80, 0, 25);
-  return constrain(fromBpm + fromHrv - 12, 0, 100);
+  (void)hrv;
+  return constrain(map(constrain(bpm, 50, 120), 50, 120, 92, 10), 0, 100);
 }
 
 const char* estadoFromCalma(int c) {
@@ -204,36 +221,43 @@ void loop() {
   }
 
   if (sensorOk) {
-    long irValue = particleSensor.getIR();
-    if (irValue > 50000 && checkForBeat(irValue)) {
+    long ir = particleSensor.getIR();
+    if (ir < IR_FINGER_THRESHOLD) {
+      // Sin dedo: descartar el histórico para no mezclar lecturas viejas.
+      rrCount = 0;
+      lastBeat = 0;
+    } else if (checkForBeat(ir)) {
       long now = millis();
-      long delta = now - lastBeat;
-      lastBeat = now;
-      if (delta > 0) {
-        beatsPerMinute = 60.0 / (delta / 1000.0);
-        if (beatsPerMinute > 30 && beatsPerMinute < 220) {
-          rates[rateSpot++] = (byte)beatsPerMinute; rateSpot %= RATE_SIZE;
-          int sum = 0; for (byte i = 0; i < RATE_SIZE; i++) sum += rates[i];
-          beatAvg = sum / RATE_SIZE;
-          rrIntervals[rrSpot++] = delta; rrSpot %= RR_SIZE;
-          if (rrCount < RR_SIZE) rrCount++;
+      if (lastBeat > 0) {
+        long delta = now - lastBeat;
+        bool plausible = (delta >= RR_MIN_MS && delta <= RR_MAX_MS);
+        // Filtro de artefactos: descartar latidos que saltan >25% vs la media
+        // (latido saltado o doble detección) — si no, inflan el HRV.
+        if (plausible && rrCount >= 3) {
+          long avg = 0;
+          for (byte i = 0; i < rrCount; i++) avg += rr[i];
+          avg /= rrCount;
+          // Rechazar saltos > 25% del promedio (latido saltado / doble detección).
+          if (labs(delta - avg) > avg / 4) plausible = false;
         }
+        if (plausible) pushRR(delta);
       }
+      lastBeat = now;
     }
   }
 
   if (millis() - lastSend >= SEND_INTERVAL_MS) {
     lastSend = millis();
 
-    bool finger = sensorOk && particleSensor.getIR() > 50000;
-    if (!finger || beatAvg == 0) {
-      // Sin dedo: igual mandamos un "latido" de presencia para que la web sepa
-      // que la pulsera está viva (register_device actualiza last_seen).
+    bool finger = sensorOk && particleSensor.getIR() > IR_FINGER_THRESHOLD;
+    if (!finger || rrCount < MIN_BEATS_TO_SEND) {
+      // Sin dedo o aún calentando: mandamos solo presencia (actualiza last_seen).
       registerDevice();
-      Serial.println("[Lectura] sin pulso estable — solo presencia");
+      Serial.println("[Lectura] calentando / sin pulso estable — solo presencia");
       return;
     }
-    int bpm = beatAvg, hrv = computeHRV();
+    int bpm = bpmFromRR();
+    int hrv = constrain(hrvFromRR(), 0, 120);   // techo fisiológico (RMSSD reposo ~20-100)
     sendReading(bpm, hrv, computeCalma(bpm, hrv));
   }
 }
