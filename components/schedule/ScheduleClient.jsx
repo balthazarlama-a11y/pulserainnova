@@ -1,27 +1,82 @@
 "use client";
 
 /**
- * HORARIO — Vista de calendario diario (en construcción).
+ * HORARIO — Calendario semanal editable por el cuidador.
  *
- * TODO (futuro): calendario editable por el cuidador. Cada actividad se cruzará
- * con los datos biométricos de la pulsera (estrés, BPM, HRV) para que la IA
- * identifique qué momentos del día generan mayor ansiedad y anticipe
- * intervenciones preventivas antes de que ocurran los episodios.
+ * Cada actividad (día + hora + título) se guarda en `horario_actividades`
+ * (Supabase, scopeado por persona vía RLS). A futuro se cruza con los datos
+ * biométricos de la pulsera para anticipar momentos de mayor ansiedad.
  */
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { IconArrowLeft, IconCalendar, IconActivity, IconWatch } from "@/components/marketing/icons";
+import { IconArrowLeft, IconCalendar, IconClock, IconX, IconWatch } from "@/components/marketing/icons";
 import { usePeople } from "@/lib/peopleContext";
+import { useAuth } from "@/hooks/useAuth";
 
-const DAYS = ["Lun", "Mar", "Mié", "Jue", "Vie"];
+// dia: 0 = Lun … 6 = Dom
+const DAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+const todayIdx = (new Date().getDay() + 6) % 7;
 
 export default function ScheduleClient() {
   const router = useRouter();
   const { selectedPerson } = usePeople();
-  const today = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"][new Date().getDay()];
-  const [activeDay, setActiveDay] = useState(DAYS.includes(today) ? today : "Lun");
+  const { supabase } = useAuth();
+  const ninoId = selectedPerson?.id || null;
+
+  const [activeDay, setActiveDay] = useState(todayIdx);
+  const [activities, setActivities] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [hora, setHora] = useState("");
+  const [titulo, setTitulo] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const loadActivities = useCallback(async () => {
+    if (!ninoId) { setActivities([]); return; }
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("horario_actividades")
+      .select("id, dia, hora, titulo")
+      .eq("niño_id", ninoId)
+      .order("hora", { ascending: true });
+    if (error) setError(error.message);
+    setActivities(data || []);
+    setLoading(false);
+  }, [supabase, ninoId]);
+
+  useEffect(() => { loadActivities(); }, [loadActivities]);
+
+  const dayActivities = activities
+    .filter((a) => a.dia === activeDay)
+    .sort((a, b) => a.hora.localeCompare(b.hora));
+
+  const addActivity = async () => {
+    if (!ninoId || !hora || !titulo.trim() || saving) return;
+    setSaving(true);
+    setError(null);
+    const { error } = await supabase.from("horario_actividades").insert({
+      "niño_id": ninoId,
+      dia: activeDay,
+      hora,
+      titulo: titulo.trim(),
+    });
+    if (error) {
+      setError(error.message);
+    } else {
+      setHora("");
+      setTitulo("");
+      await loadActivities();
+    }
+    setSaving(false);
+  };
+
+  const deleteActivity = async (id) => {
+    setActivities((prev) => prev.filter((a) => a.id !== id)); // optimista
+    const { error } = await supabase.from("horario_actividades").delete().eq("id", id);
+    if (error) { setError(error.message); await loadActivities(); }
+  };
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--ink)", position: "relative" }}>
@@ -57,12 +112,13 @@ export default function ScheduleClient() {
         ) : (
           <>
             <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-              {DAYS.map(day => {
-                const isActive = day === activeDay;
-                const isToday = day === today;
+              {DAYS.map((day, idx) => {
+                const isActive = idx === activeDay;
+                const isToday = idx === todayIdx;
+                const count = activities.filter((a) => a.dia === idx).length;
                 return (
-                  <button key={day} onClick={() => setActiveDay(day)} style={{
-                    flex: 1, padding: "10px 8px", borderRadius: 12,
+                  <button key={day} onClick={() => setActiveDay(idx)} style={{
+                    flex: 1, padding: "10px 6px", borderRadius: 12,
                     background: isActive ? "rgb(var(--brand-rgb) / 0.15)" : "var(--surface)",
                     border: isActive ? "1px solid rgb(var(--brand-rgb) / 0.35)" : "1px solid var(--border)",
                     color: isActive ? "var(--brand)" : "var(--ink-dim)",
@@ -71,28 +127,68 @@ export default function ScheduleClient() {
                   }}>
                     {day}
                     {isToday && <span style={{ position: "absolute", top: 4, right: 4, width: 5, height: 5, borderRadius: "50%", background: "var(--brand)" }}/>}
+                    {count > 0 && <span style={{ display: "block", fontSize: 10, marginTop: 2, opacity: 0.7 }}>{count}</span>}
                   </button>
                 );
               })}
             </div>
 
-            <div className="card" style={{ padding: "40px 24px", textAlign: "center", color: "var(--ink-dim)" }}>
-              <div style={{ display: "inline-flex", marginBottom: 12, color: "var(--ink-faint)" }}><IconCalendar size={28}/></div>
-              <div style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)", marginBottom: 4 }}>Aún no hay horario configurado</div>
-              <div style={{ fontSize: 13, maxWidth: 380, margin: "0 auto" }}>
-                No hay actividades para {activeDay.toLowerCase()}. La edición del horario estará disponible próximamente.
+            {/* Lista de actividades del día */}
+            {loading ? (
+              <div className="card" style={{ padding: "32px 24px", textAlign: "center", color: "var(--ink-dim)", fontSize: 13 }}>Cargando…</div>
+            ) : dayActivities.length === 0 ? (
+              <div className="card" style={{ padding: "36px 24px", textAlign: "center", color: "var(--ink-dim)" }}>
+                <div style={{ display: "inline-flex", marginBottom: 12, color: "var(--ink-faint)" }}><IconCalendar size={26}/></div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)", marginBottom: 4 }}>Sin actividades el {DAYS[activeDay].toLowerCase()}</div>
+                <div style={{ fontSize: 13 }}>Agrega la primera abajo.</div>
               </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {dayActivities.map((a) => (
+                  <div key={a.id} className="card" style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 14 }}>
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "var(--brand)", fontWeight: 700, fontSize: 14, fontFamily: "Inter, sans-serif", minWidth: 64 }}>
+                      <IconClock size={14}/> {a.hora.slice(0, 5)}
+                    </div>
+                    <div style={{ flex: 1, fontSize: 14, color: "var(--ink)" }}>{a.titulo}</div>
+                    <button onClick={() => deleteActivity(a.id)} aria-label="Eliminar actividad" style={{
+                      background: "transparent", border: "none", cursor: "pointer",
+                      color: "var(--ink-faint)", display: "inline-flex", padding: 4, borderRadius: 6,
+                    }}>
+                      <IconX size={16}/>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Formulario de alta */}
+            <div className="card" style={{ marginTop: 18, padding: "16px", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              <input type="time" value={hora} onChange={(e) => setHora(e.target.value)} style={{
+                background: "var(--surface-elevated, var(--surface))", border: "1px solid var(--border)",
+                borderRadius: 10, padding: "10px 12px", color: "var(--ink)", fontSize: 14, colorScheme: "dark",
+              }}/>
+              <input type="text" value={titulo} placeholder="Actividad (ej. Colegio, Almuerzo, Terapia)"
+                onChange={(e) => setTitulo(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addActivity()}
+                style={{
+                  flex: 1, minWidth: 160, background: "var(--surface-elevated, var(--surface))",
+                  border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px",
+                  color: "var(--ink)", fontSize: 14,
+                }}/>
+              <button onClick={addActivity} disabled={!hora || !titulo.trim() || saving} style={{
+                padding: "10px 18px", borderRadius: 10, border: "none", cursor: "pointer",
+                background: "linear-gradient(135deg, #5EDC9A, #7DD3B8)", color: "#06281a",
+                fontWeight: 700, fontSize: 14, opacity: (!hora || !titulo.trim() || saving) ? 0.5 : 1,
+              }}>
+                {saving ? "Guardando…" : "+ Agregar"}
+              </button>
             </div>
 
-            <div style={{
-              marginTop: 24, display: "inline-flex", alignItems: "center", gap: 8,
-              padding: "8px 14px", borderRadius: 8, fontSize: 12,
-              background: "rgba(42, 157, 143, 0.08)", border: "1px solid rgba(42, 157, 143, 0.2)",
-              color: "var(--brand)", fontWeight: 500,
-            }}>
-              <IconActivity size={11}/>
-              Próximamente: horario editable cruzado con los datos biométricos de la IA
-            </div>
+            {error && (
+              <div style={{ marginTop: 12, fontSize: 12, color: "var(--danger, #ec5b6b)" }}>
+                No se pudo guardar: {error}
+              </div>
+            )}
           </>
         )}
       </div>
