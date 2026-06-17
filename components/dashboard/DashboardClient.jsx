@@ -197,10 +197,11 @@ const HeroStatus = ({ nombre, hasReading, calma, calmaDelta, bpm, sleep, state, 
 // ─── Gráfico 24h (serie real, escala temporal) ────────────────────────────────
 const StressChart = ({ series }) => {
   const w = 640, h = 180;
+  const lm = 52, rm = 20, tm = 20, bm = 20;
   const now = Date.now();
   const start = now - 24 * 3600000;
-  const xFor = (t) => 20 + ((t - start) / (now - start)) * (w - 40);
-  const yFor = (v) => h - 20 - (v / 100) * (h - 40);
+  const xFor = (t) => lm + ((t - start) / (now - start)) * (w - lm - rm);
+  const yFor = (v) => h - bm - (v / 100) * (h - tm - bm);
 
   const pts = (series || []).filter((p) => p.stress != null);
   const last = pts[pts.length - 1];
@@ -209,10 +210,22 @@ const StressChart = ({ series }) => {
 
   return (
     <div className="w-full relative">
-      <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-auto block" role="img" aria-label="Línea de estrés de las últimas 24 horas">
-        {[0.25, 0.5, 0.75].map(g => (
-          <line key={g} x1="20" x2={w-20} y1={20 + g*(h-40)} y2={20 + g*(h-40)} stroke="var(--border)" strokeDasharray="2 4"/>
-        ))}
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-auto block" role="img" aria-label="Línea de nivel cardiaco de las últimas 24 horas">
+        <text x={8} y={h / 2} textAnchor="middle" fontSize="9" fill="var(--ink-dim)"
+          fontFamily="'Plus Jakarta Sans'" transform={`rotate(-90, 8, ${h / 2})`}>
+          Nivel cardiaco
+        </text>
+        {[75, 50, 25].map(val => {
+          const y = yFor(val);
+          return (
+            <g key={val}>
+              <line x1={lm} x2={w - rm} y1={y} y2={y} stroke="var(--border)" strokeDasharray="2 4"/>
+              <text x={lm - 4} y={y + 3.5} textAnchor="end" fontSize="9" fill="var(--ink-dim)" fontFamily="'Plus Jakarta Sans'">
+                {val}
+              </text>
+            </g>
+          );
+        })}
         {pts.length > 1 && (
           <path d={d} stroke={state.hex} strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
         )}
@@ -220,7 +233,7 @@ const StressChart = ({ series }) => {
           <circle key={i} cx={xFor(p.t.getTime())} cy={yFor(p.stress)} r={i === pts.length - 1 ? 5 : 2.5} fill={state.hex}/>
         ))}
         {["−24h", "−18h", "−12h", "−6h", "Ahora"].map((lbl, i) => (
-          <text key={i} x={20 + (i / 4) * (w - 40)} y={h - 4} textAnchor="middle" fontSize="10" fill="var(--ink-dim)" fontFamily="'Plus Jakarta Sans'">
+          <text key={i} x={lm + (i / 4) * (w - lm - rm)} y={h - 4} textAnchor="middle" fontSize="10" fill="var(--ink-dim)" fontFamily="'Plus Jakarta Sans'">
             {lbl}
           </text>
         ))}
@@ -398,13 +411,15 @@ const RecommendationPanel = ({ stress, bpm, bpmResting, series, childName, child
 
       setRecs(data.recommendations);
       setIsAI(true);
-      lastFetchRef.current = Date.now();
     } catch (err) {
       console.warn("[RecommendationPanel] Fallback local:", err.message);
       setAiError(err.message);
       setRecs(RECOMMENDATIONS[stressKey] || RECOMMENDATIONS.mild);
       setIsAI(false);
     } finally {
+      // Aplica el cooldown también tras un fallo: evita reintentos en ráfaga
+      // (y límites de uso de NVIDIA) cuando los datos en vivo cambian seguido.
+      lastFetchRef.current = Date.now();
       setLoading(false);
     }
   }, [stressKey, bpmResting, childName, childAge]);

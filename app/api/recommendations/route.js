@@ -82,6 +82,7 @@ export async function POST(request) {
         ],
         temperature: 0.5,
         max_tokens: 350,   // 3 recomendaciones cortas caben en ~280 tokens
+        response_format: { type: "json_object" },  // fuerza JSON válido (evita fallback por parseo)
       }),
       signal: controller.signal,
     });
