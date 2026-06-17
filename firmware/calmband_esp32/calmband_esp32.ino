@@ -52,6 +52,14 @@ void updateStatusLed() {
 void blinkActivity() {
   digitalWrite(STATUS_LED, LOW); delay(40); digitalWrite(STATUS_LED, HIGH);
 }
+// Celebración al conectar: 3 parpadeos rápidos y luego queda fijo (éxito).
+void celebrateConnected() {
+  for (int i = 0; i < 3; i++) {
+    digitalWrite(STATUS_LED, HIGH); delay(120);
+    digitalWrite(STATUS_LED, LOW);  delay(120);
+  }
+  digitalWrite(STATUS_LED, HIGH);
+}
 
 // ── Cálculo de pulso a partir de intervalos RR (ms) ──
 #define IR_FINGER_THRESHOLD 50000     // IR por debajo = no hay dedo
@@ -162,6 +170,7 @@ String apName() {
 void startProvisioning() {
   wm.setConfigPortalTimeout(0);               // sin timeout: el portal queda abierto
   wm.setConfigPortalBlocking(false);          // NO bloquea: el loop sigue corriendo (LED)
+  wm.setConnectTimeout(20);                   // si la red guardada no está, abre el portal en ~20s (no 60)
 
   // Mostrar el MAC completo en el portal (lo necesita para vincular en la web).
   static String macHtml = "<div style='text-align:center;margin:10px 0;padding:10px;"
@@ -169,6 +178,17 @@ void startProvisioning() {
                    "<b style='font-size:1.1em'>" + deviceMac + "</b></div>";
   static WiFiManagerParameter macField(macHtml.c_str());
   wm.addParameter(&macField);
+
+  // "Ticket" / guía de éxito en el portal (cómo saber que conectó).
+  static WiFiManagerParameter infoField(
+    "<div style='margin:10px 0;padding:12px;background:#eaffea;border-radius:8px;"
+    "border:1px solid #5EDC9A;font-size:0.95em'>"
+    "<b>✅ ¿Cómo sé que conectó?</b><br>Al guardar, la pulsera intenta conectarse:"
+    "<br>• El <b>LED</b> hace 3 parpadeos y queda <b>fijo</b> = conectó.<br>"
+    "• Esta red <b>CalmBand desaparece</b> = conectó.<br>"
+    "• Si CalmBand <b>vuelve a aparecer</b> = la contraseña estaba mal, reintentá."
+    "</div>");
+  wm.addParameter(&infoField);
 
   // autoConnect: intenta la red guardada; si falla, abre el portal (no bloqueante).
   if (wm.autoConnect(apName().c_str())) {
@@ -239,7 +259,7 @@ void setup() {
   startProvisioning();
 
   // Registro inicial por MAC (solo si ya conectó; si no, se hace al conectar).
-  if (WiFi.status() == WL_CONNECTED) registerDevice();
+  if (WiFi.status() == WL_CONNECTED) { celebrateConnected(); registerDevice(); }
   lastSend = millis();
 }
 
@@ -250,6 +270,7 @@ void loop() {
     if (WiFi.status() == WL_CONNECTED) {
       portalRunning = false;
       Serial.printf("[WiFi] Conectado. IP: %s\n", WiFi.localIP().toString().c_str());
+      celebrateConnected();
       registerDevice();
       lastSend = millis();
     }
