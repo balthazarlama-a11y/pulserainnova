@@ -35,10 +35,23 @@
 #define FW_VERSION        "calmband-1.0"
 #define SEND_INTERVAL_MS  8000
 #define BOOT_BUTTON       0       // GPIO0 = botón BOOT en casi todas las placas ESP32
+#define STATUS_LED        2       // LED integrado (GPIO2) en la mayoría de placas ESP32
 
 MAX30105 particleSensor;
+WiFiManager wm;                   // global: el portal corre en modo NO bloqueante
+bool   portalRunning = false;     // true mientras el portal cautivo está abierto
 String deviceMac;                 // "AA:BB:CC:DD:EE:FF" — identidad de la pulsera
 bool   sensorOk = false;
+
+// ── LED de estado: FIJO = conectado · PARPADEO = configurar/sin WiFi ──
+void updateStatusLed() {
+  if (WiFi.status() == WL_CONNECTED) digitalWrite(STATUS_LED, HIGH);   // fijo
+  else digitalWrite(STATUS_LED, (millis() / 250) % 2);                 // parpadeo ~2/s
+}
+// Parpadeo corto = acabamos de mandar un dato.
+void blinkActivity() {
+  digitalWrite(STATUS_LED, LOW); delay(40); digitalWrite(STATUS_LED, HIGH);
+}
 
 // ── Cálculo de pulso a partir de intervalos RR (ms) ──
 #define IR_FINGER_THRESHOLD 50000     // IR por debajo = no hay dedo
@@ -107,6 +120,7 @@ void registerDevice() {
   String resp;
   int code = callRpc("register_device", body, &resp);
   Serial.printf("[Supabase] register_device -> %d %s\n", code, resp.c_str());
+  if (code > 0) blinkActivity();
 }
 
 // ───────────────────────── Sensor / métricas ─────────────────────────
@@ -134,42 +148,65 @@ void sendReading(int bpm, int hrv, int calma) {
   int code = callRpc("ingest_biometria", body, &resp);
   Serial.printf("[Supabase] ingest %d  bpm=%d hrv=%d calma=%d (%s) %s\n",
                 code, bpm, hrv, calma, estadoFromCalma(calma), resp.c_str());
+  if (code > 0) blinkActivity();
 }
 
 // ───────────────────────── WiFi / portal cautivo ─────────────────────────
-void startProvisioning(bool forced) {
-  WiFiManager wm;
-  wm.setConfigPortalTimeout(0);               // sin timeout: espera a que configuren
+// AP que crea la pulsera cuando no tiene/no logra WiFi (último 2 bytes del MAC).
+String apName() {
+  String n = "CalmBand-" + deviceMac.substring(12);
+  n.replace(":", "");
+  return n;
+}
 
-  // AP con sufijo del MAC para que el usuario reconozca su pulsera.
-  String apName = "CalmBand-" + deviceMac.substring(12);  // últimos 2 bytes
-  apName.replace(":", "");
+void startProvisioning() {
+  wm.setConfigPortalTimeout(0);               // sin timeout: el portal queda abierto
+  wm.setConfigPortalBlocking(false);          // NO bloquea: el loop sigue corriendo (LED)
 
   // Mostrar el MAC completo en el portal (lo necesita para vincular en la web).
-  String macHtml = "<div style='text-align:center;margin:10px 0;padding:10px;"
+  static String macHtml = "<div style='text-align:center;margin:10px 0;padding:10px;"
                    "background:#eef;border-radius:8px'>MAC de esta pulsera:<br>"
                    "<b style='font-size:1.1em'>" + deviceMac + "</b></div>";
-  WiFiManagerParameter macField(macHtml.c_str());
+  static WiFiManagerParameter macField(macHtml.c_str());
   wm.addParameter(&macField);
 
-  Serial.printf("[WiFi] Portal abierto. Conéctate a la red \"%s\" para configurar.\n", apName.c_str());
-  bool ok = forced ? wm.startConfigPortal(apName.c_str()) : wm.autoConnect(apName.c_str());
-  if (ok) Serial.printf("[WiFi] Conectado. IP: %s\n", WiFi.localIP().toString().c_str());
-  else    Serial.println("[WiFi] No se pudo conectar; reiniciando…");
-  if (!ok) { delay(1500); ESP.restart(); }
+  // autoConnect: intenta la red guardada; si falla, abre el portal (no bloqueante).
+  if (wm.autoConnect(apName().c_str())) {
+    Serial.printf("[WiFi] Conectado. IP: %s\n", WiFi.localIP().toString().c_str());
+    portalRunning = false;
+  } else {
+    Serial.printf("[WiFi] Sin conexión. Portal abierto: conéctate a \"%s\" (LED parpadeando).\n",
+                  apName().c_str());
+    portalRunning = true;
+  }
 }
 
 void maybeResetWiFi() {
-  // Mantener BOOT pulsado ~3 s borra la red guardada.
+  // Mantener BOOT pulsado ~3 s borra la red guardada y reabre el portal.
   if (digitalRead(BOOT_BUTTON) != LOW) return;
   unsigned long t0 = millis();
   while (digitalRead(BOOT_BUTTON) == LOW) {
+    updateStatusLed();
     if (millis() - t0 > 3000) {
       Serial.println("[WiFi] BOOT mantenido: borrando credenciales y reabriendo portal…");
-      WiFiManager wm; wm.resetSettings();
+      wm.resetSettings();
       delay(500); ESP.restart();
     }
     delay(50);
+  }
+}
+
+// Inicializa (o reinicia) el sensor de pulso. Se llama al arrancar y para
+// recuperarse si el sensor deja de entregar muestras (IR=0).
+void initSensor() {
+  sensorOk = particleSensor.begin(Wire, I2C_SPEED_STANDARD);   // 100 kHz
+  if (sensorOk) {
+    Serial.println("[Sensor] MAX3010x OK");
+    particleSensor.setup();                      // config por defecto (IR fuerte)
+    particleSensor.setPulseAmplitudeRed(0x0A);
+    particleSensor.setPulseAmplitudeGreen(0);
+  } else {
+    Serial.println("[Sensor] MAX3010x NO detectado (revisa cableado I2C). Sigo igual.");
   }
 }
 
@@ -178,9 +215,12 @@ void setup() {
   Serial.begin(115200);
   delay(300);
   pinMode(BOOT_BUTTON, INPUT_PULLUP);
+  pinMode(STATUS_LED, OUTPUT);
+  digitalWrite(STATUS_LED, LOW);
   Serial.println("\n=== CalmBand ESP32 ===");
 
   WiFi.mode(WIFI_STA);
+  WiFi.setAutoReconnect(true);
   // La MAC se lee del eFuse (siempre disponible, incluso antes de levantar WiFi).
   uint8_t mac[6];
   esp_read_mac(mac, ESP_MAC_WIFI_STA);
@@ -190,35 +230,36 @@ void setup() {
   deviceMac = String(macbuf);
   Serial.printf("[ID] MAC: %s\n", deviceMac.c_str());
 
-  // Sensor MAX3010x (I2C por defecto: SDA=21, SCL=22).
+  // Sensor MAX3010x (I2C: SDA=21, SCL=22). 100 kHz = más robusto con cables dupont.
   Wire.begin(21, 22);
-  sensorOk = particleSensor.begin(Wire, I2C_SPEED_FAST);
-  if (sensorOk) {
-    Serial.println("[Sensor] MAX3010x OK");
-    particleSensor.setup();
-    particleSensor.setPulseAmplitudeRed(0x0A);
-    particleSensor.setPulseAmplitudeGreen(0);
-  } else {
-    Serial.println("[Sensor] MAX3010x NO detectado (revisa cableado I2C). Sigo igual.");
-  }
+  Wire.setClock(100000);
+  initSensor();
 
   // Conecta con la red guardada o abre el portal cautivo si no hay ninguna.
-  startProvisioning(false);
+  startProvisioning();
 
-  // Registro inicial por MAC (queda "pendiente" hasta que la asignen en la web).
-  registerDevice();
+  // Registro inicial por MAC (solo si ya conectó; si no, se hace al conectar).
+  if (WiFi.status() == WL_CONNECTED) registerDevice();
   lastSend = millis();
 }
 
 void loop() {
+  // Mientras el portal está abierto, atenderlo y detectar la conexión.
+  if (portalRunning) {
+    wm.process();
+    if (WiFi.status() == WL_CONNECTED) {
+      portalRunning = false;
+      Serial.printf("[WiFi] Conectado. IP: %s\n", WiFi.localIP().toString().c_str());
+      registerDevice();
+      lastSend = millis();
+    }
+  }
+
+  updateStatusLed();
   maybeResetWiFi();
 
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("[WiFi] Desconectado, reintentando…");
-    WiFi.reconnect();
-    delay(2000);
-    return;
-  }
+  // Sin WiFi: el LED parpadea y no intentamos enviar (el stack reconecta solo).
+  if (WiFi.status() != WL_CONNECTED) return;
 
   if (sensorOk) {
     long ir = particleSensor.getIR();
@@ -249,11 +290,19 @@ void loop() {
   if (millis() - lastSend >= SEND_INTERVAL_MS) {
     lastSend = millis();
 
-    bool finger = sensorOk && particleSensor.getIR() > IR_FINGER_THRESHOLD;
+    long ir = sensorOk ? particleSensor.getIR() : 0;
+    bool finger = ir > IR_FINGER_THRESHOLD;
     if (!finger || rrCount < MIN_BEATS_TO_SEND) {
       // Sin dedo o aún calentando: mandamos solo presencia (actualiza last_seen).
       registerDevice();
-      Serial.println("[Lectura] calentando / sin pulso estable — solo presencia");
+      Serial.printf("[Lectura] solo presencia — IR=%ld (dedo=%s) latidos=%d/%d\n",
+                    ir, finger ? "SI" : "no", rrCount, MIN_BEATS_TO_SEND);
+      // Auto-reinicio: si el sensor responde pero no entrega muestras (IR=0),
+      // lo reinicializamos por si fue un glitch de I2C.
+      if (sensorOk && ir == 0) {
+        Serial.println("[Sensor] IR=0 — reinicializando sensor…");
+        initSensor();
+      }
       return;
     }
     int bpm = bpmFromRR();
