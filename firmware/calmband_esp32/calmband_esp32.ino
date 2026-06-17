@@ -263,8 +263,10 @@ void loop() {
 
   if (sensorOk) {
     long ir = particleSensor.getIR();
-    if (ir < IR_FINGER_THRESHOLD) {
-      // Sin dedo: descartar el histórico para no mezclar lecturas viejas.
+    if (ir == 0) {
+      // Glitch de lectura (I2C/cable): ignorar, NO borrar el histórico de latidos.
+    } else if (ir < IR_FINGER_THRESHOLD) {
+      // Dedo retirado de verdad: descartar el histórico.
       rrCount = 0;
       lastBeat = 0;
     } else if (checkForBeat(ir)) {
@@ -290,15 +292,17 @@ void loop() {
   if (millis() - lastSend >= SEND_INTERVAL_MS) {
     lastSend = millis();
 
+    // Si hace >5 s que no llega un latido, consideramos perdido el pulso.
+    if (lastBeat == 0 || millis() - lastBeat > 5000) { rrCount = 0; lastBeat = 0; }
+
     long ir = sensorOk ? particleSensor.getIR() : 0;
-    bool finger = ir > IR_FINGER_THRESHOLD;
-    if (!finger || rrCount < MIN_BEATS_TO_SEND) {
-      // Sin dedo o aún calentando: mandamos solo presencia (actualiza last_seen).
+
+    // Mandamos lectura si tenemos pulso reciente (rrCount), aunque el IR parpadee.
+    if (rrCount < MIN_BEATS_TO_SEND) {
       registerDevice();
-      Serial.printf("[Lectura] solo presencia — IR=%ld (dedo=%s) latidos=%d/%d\n",
-                    ir, finger ? "SI" : "no", rrCount, MIN_BEATS_TO_SEND);
-      // Auto-reinicio: si el sensor responde pero no entrega muestras (IR=0),
-      // lo reinicializamos por si fue un glitch de I2C.
+      Serial.printf("[Lectura] solo presencia — IR=%ld latidos=%d/%d\n",
+                    ir, rrCount, MIN_BEATS_TO_SEND);
+      // Auto-reinicio: el sensor responde pero no entrega muestras (IR=0).
       if (sensorOk && ir == 0) {
         Serial.println("[Sensor] IR=0 — reinicializando sensor…");
         initSensor();
