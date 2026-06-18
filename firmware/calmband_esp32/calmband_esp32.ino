@@ -43,8 +43,8 @@
 #define SUPABASE_ANON "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtnYW12emxlaHJudnB3d25qYW1wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExNzU2NzksImV4cCI6MjA5Njc1MTY3OX0.IEdSi4pbFNi2RlG468apJDxD8p0Rbf5zJyHhv1IRxJM"
 
 #define FW_VERSION        "calmband-2.1"
-#define SEND_INTERVAL_MS  8000
-#define REOPEN_PORTAL_MS  30000   // sin WiFi este tiempo y con el AP cerrado → reabrir portal
+#define SEND_INTERVAL_MS  4000
+#define REOPEN_PORTAL_MS  120000  // sin WiFi este tiempo y con el AP cerrado → reabrir portal
 #define BOOT_BUTTON       0       // GPIO0 = botón BOOT en casi todas las placas ESP32
 #define STATUS_LED        2       // LED integrado (GPIO2) en la mayoría de placas ESP32
 
@@ -222,13 +222,12 @@ void sendReading(int bpm, int hrv, int calma, const char* isoTs = nullptr) {
   if (code > 0) blinkActivity();
 }
 
-// Envía todas las lecturas guardadas en offBuf con sus timestamps reales (NTP).
+// Envía hasta 3 lecturas guardadas en offBuf con sus timestamps reales (NTP) por ciclo para no bloquear.
 void flushBuffer() {
   if (offCount == 0) return;
   int tail = (offHead - offCount + BUF_SIZE) % BUF_SIZE;
-  Serial.printf("[Buffer] Vaciando %d lecturas offline…\n", offCount);
-  int sent = 0;
-  while (offCount > 0 && WiFi.status() == WL_CONNECTED) {
+  int sent_this_cycle = 0;
+  while (offCount > 0 && WiFi.status() == WL_CONNECTED && sent_this_cycle < 3) {
     OfflineReading& r = offBuf[tail];
     char ts[25] = {0};
     if (ntpSynced) {
@@ -242,10 +241,14 @@ void flushBuffer() {
     sendReading(r.bpm, r.hrv, r.calma, ntpSynced ? ts : nullptr);
     tail = (tail + 1) % BUF_SIZE;
     offCount--;
-    sent++;
-    delay(100);   // pausa breve para no saturar la API
+    sent_this_cycle++;
+    delay(50);   // pausa muy breve
   }
-  Serial.printf("[Buffer] %d lecturas enviadas.\n", sent);
+  if (offCount > 0) {
+    Serial.printf("[Buffer] Quedan %d lecturas offline por enviar…\n", offCount);
+  } else {
+    Serial.println("[Buffer] Buffer vaciado completamente.");
+  }
 }
 
 void initSensor() {

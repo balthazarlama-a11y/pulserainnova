@@ -623,6 +623,7 @@ export default function DashboardClient({ user, profile }) {
   const [connection, setConnection] = useState("disconnected");
   const [greeting, setGreeting] = useState("Hola");
   const lastHeartbeatRef = useRef(0);
+  const lastBiometricRef = useRef(0);
 
   const ninoId = selectedPerson?.id || null;
 
@@ -637,6 +638,7 @@ export default function DashboardClient({ user, profile }) {
       setStress(null); setBpm(null); setSeries([]); setWeekly([]); setActivity([]);
       setConnection("disconnected");
       lastHeartbeatRef.current = 0;
+      lastBiometricRef.current = 0;
       return;
     }
 
@@ -646,6 +648,11 @@ export default function DashboardClient({ user, profile }) {
       const age = Date.now() - lastHeartbeatRef.current;
       if (!lastHeartbeatRef.current) { setConnection("disconnected"); return; }
       setConnection(age < 120000 ? "connected" : age < 600000 ? "partial" : "disconnected");
+      
+      // Si pasan más de 20 segundos sin una lectura nueva real, asumimos que no hay dedo
+      if (Date.now() - lastBiometricRef.current > 20000) {
+        setBpm(null); // Ocultar pulsaciones hasta que vuelva a detectar pulso
+      }
     };
 
     const loadAll = async () => {
@@ -659,6 +666,7 @@ export default function DashboardClient({ user, profile }) {
 
       if (latest?.timestamp) {
         lastHeartbeatRef.current = new Date(latest.timestamp).getTime();
+        lastBiometricRef.current = lastHeartbeatRef.current;
         if (latest.bpm != null) setBpm(latest.bpm);
         const s = stressFromCalma(latest.nivel_calma);
         if (s != null) setStress(s);
@@ -675,26 +683,43 @@ export default function DashboardClient({ user, profile }) {
 
     const interval = setInterval(checkStatus, 30000);
 
-    const channel = supabase
-      .channel(`biometria-${ninoId}`)
-      .on("postgres_changes",
-        { event: "INSERT", schema: "public", table: "sesiones_biometria", filter: `niño_id=eq.${ninoId}` },
-        (payload) => {
-          lastHeartbeatRef.current = Date.now();
-          setConnection("connected");
-          if (payload.new.bpm != null) setBpm(payload.new.bpm);
-          const s = stressFromCalma(payload.new.nivel_calma);
-          if (s != null) {
-            setStress(s);
-            setSeries((prev) => [...prev, { t: new Date(), stress: s, bpm: payload.new.bpm ?? null }]);
+    let channel;
+    const setupRealtime = () => {
+      if (channel) supabase.removeChannel(channel);
+      channel = supabase
+        .channel(`biometria-${ninoId}`)
+        .on("postgres_changes",
+          { event: "INSERT", schema: "public", table: "sesiones_biometria", filter: `niño_id=eq.${ninoId}` },
+          (payload) => {
+            lastHeartbeatRef.current = Date.now();
+            lastBiometricRef.current = Date.now();
+            setConnection("connected");
+            if (payload.new.bpm != null) setBpm(payload.new.bpm);
+            const s = stressFromCalma(payload.new.nivel_calma);
+            if (s != null) {
+              setStress(s);
+              setSeries((prev) => [...prev, { t: new Date(), stress: s, bpm: payload.new.bpm ?? null }]);
+            }
+          })
+        .on("postgres_changes",
+          { event: "UPDATE", schema: "public", table: "dispositivos", filter: `niño_id=eq.${ninoId}` },
+          (payload) => {
+            // Latido de presencia (cuando la pulsera manda datos sin biometría o actualiza last_seen)
+            lastHeartbeatRef.current = Date.now();
+            setConnection("connected");
+          })
+        .subscribe((status, err) => {
+          if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+            if (active) setTimeout(setupRealtime, 5000); // Reintento automático
           }
-        })
-      .subscribe();
+        });
+    };
+    setupRealtime();
 
     return () => {
       active = false;
       clearInterval(interval);
-      supabase.removeChannel(channel);
+      if (channel) supabase.removeChannel(channel);
     };
   }, [supabase, ninoId]);
 

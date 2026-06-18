@@ -12,6 +12,13 @@ EXCEPTION WHEN duplicate_object THEN
   RAISE NOTICE 'sesiones_biometria ya estaba en supabase_realtime';
 END $$;
 
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE dispositivos;
+EXCEPTION WHEN duplicate_object THEN
+  RAISE NOTICE 'dispositivos ya estaba en supabase_realtime';
+END $$;
+
 -- 2. Limpiar lecturas no fisiológicas de las primeras pruebas
 --    (bpm fuera de rango o HRV inflado por el jitter del sensor).
 --    Revisá el SELECT antes de borrar si querés ver qué se va.
