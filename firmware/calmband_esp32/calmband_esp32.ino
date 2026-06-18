@@ -1,5 +1,5 @@
 /*
- * CalmBand — Firmware ESP32 (pulsera) · v2.0
+ * CalmBand — Firmware ESP32 (pulsera) · v2.1
  * ---------------------------------------------------------------------------
  * Provisioning con PORTAL A MEDIDA (AP+STA simultáneo): la pulsera crea su red
  * "CalmBand-XXXX" y, al guardar las credenciales, se conecta a tu WiFi SIN bajar
@@ -10,6 +10,11 @@
  * La identidad de la pulsera es su MAC. Al conectarse se registra sola en
  * Supabase (queda "pendiente") y el tutor la asigna a una persona desde la web.
  * Luego envía pulso real (MAX3010x) cada pocos segundos, identificándose por MAC.
+ *
+ * v2.1 — Buffer offline:
+ *   El sensor toma datos SIEMPRE, esté o no conectado a WiFi.
+ *   Las lecturas sin conexión se guardan en un buffer circular (BUF_SIZE × 8s).
+ *   Al reconectar se sincronizan por NTP y se envían con timestamps reales.
  *
  * Placa:     ESP32 Dev Module (FQBN esp32:esp32:esp32)
  * Sensor:    MAX30102 / MAX30105 / MAX30100  por I2C (SDA=GPIO21, SCL=GPIO22)
@@ -27,7 +32,8 @@
 #include <WebServer.h>
 #include <DNSServer.h>
 #include <Preferences.h>
-#include "esp_mac.h"              // esp_read_mac (MAC desde eFuse, disponible siempre)
+#include <time.h>               // NTP / gmtime_r
+#include "esp_mac.h"            // esp_read_mac (MAC desde eFuse, disponible siempre)
 #include "MAX30105.h"
 #include "heartRate.h"
 
@@ -36,8 +42,9 @@
 #define SUPABASE_URL  "https://kgamvzlehrnvpwwnjamp.supabase.co"
 #define SUPABASE_ANON "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtnYW12emxlaHJudnB3d25qYW1wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExNzU2NzksImV4cCI6MjA5Njc1MTY3OX0.IEdSi4pbFNi2RlG468apJDxD8p0Rbf5zJyHhv1IRxJM"
 
-#define FW_VERSION        "calmband-2.0"
+#define FW_VERSION        "calmband-2.1"
 #define SEND_INTERVAL_MS  8000
+#define REOPEN_PORTAL_MS  30000   // sin WiFi este tiempo y con el AP cerrado → reabrir portal
 #define BOOT_BUTTON       0       // GPIO0 = botón BOOT en casi todas las placas ESP32
 #define STATUS_LED        2       // LED integrado (GPIO2) en la mayoría de placas ESP32
 
@@ -50,11 +57,12 @@ WebServer  server(80);
 DNSServer  dnsServer;
 Preferences prefs;
 bool   apActive = false;          // AP + portal levantados
-String pendSsid, pendPass;        // credenciales del intento en curso
+String pendSsid, pendUser, pendAnon, pendPass;  // credenciales del intento en curso (user vacío = red común)
 // Estado del intento de conexión que reporta /status al navegador.
 enum ConnState { IDLE, CONNECTING, CONNECTED, FAILED };
 ConnState connState = IDLE;
 unsigned long connStart = 0, connectedAt = 0;
+unsigned long disconnectedSince = 0;   // primer instante sin WiFi (0 = conectada)
 
 // ── LED de estado: FIJO = conectado · PARPADEO = configurar/sin WiFi ──
 void updateStatusLed() {
@@ -113,6 +121,49 @@ int hrvFromRR() {                                    // RMSSD sobre RR consecuti
 
 unsigned long lastSend = 0;
 
+// ── Offline ring buffer (lecturas capturadas sin WiFi) ───────────────────────
+// 400 lecturas × 8 s/lectura ≈ 53 minutos de autonomía sin conexión.
+#define BUF_SIZE 400
+
+struct OfflineReading {
+  unsigned long capturedAt;   // millis() en el momento de la lectura
+  int16_t bpm, hrv, calma;   // int16_t alcanza para todos los valores posibles
+};
+OfflineReading offBuf[BUF_SIZE];
+int offHead  = 0;             // próxima posición de escritura
+int offCount = 0;             // lecturas almacenadas actualmente
+
+void offPush(int bpm, int hrv, int calma) {
+  offBuf[offHead] = { millis(), (int16_t)bpm, (int16_t)hrv, (int16_t)calma };
+  offHead = (offHead + 1) % BUF_SIZE;
+  if (offCount < BUF_SIZE) offCount++;
+  // Si el buffer está lleno, offHead avanzó sobre la lectura más antigua (ring).
+}
+
+// ── NTP ───────────────────────────────────────────────────────────────────────
+bool          ntpSynced  = false;
+unsigned long ntpMs      = 0;     // millis() en el momento de sincronización
+time_t        ntpEpoch   = 0;     // epoch Unix en el momento de sincronización
+
+void syncNTP() {
+  configTime(0, 0, "pool.ntp.org", "time.nist.gov");
+  time_t now = 0;
+  for (int i = 0; i < 20 && now < 1000000000UL; i++) {
+    delay(250);
+    now = time(nullptr);
+  }
+  if (now > 1000000000UL) {
+    ntpSynced = true;
+    ntpEpoch  = now;
+    ntpMs     = millis();
+    Serial.printf("[NTP] Sincronizado: epoch=%ld\n", (long)now);
+  } else {
+    Serial.println("[NTP] Sin respuesta — los datos offline se enviarán sin timestamp exacto.");
+  }
+}
+
+bool prevWifiOk = false;   // para detectar la transición offline→online
+
 // ───────────────────────── Supabase RPC ─────────────────────────
 int callRpc(const char* fn, const String& jsonBody, String* outResp = nullptr) {
   if (WiFi.status() != WL_CONNECTED) return -1;
@@ -154,17 +205,47 @@ const char* estadoFromCalma(int c) {
   return "estres";
 }
 
-void sendReading(int bpm, int hrv, int calma) {
+// isoTs: timestamp ISO-8601 UTC de la lectura (para datos offline). NULL = usar now() en Supabase.
+void sendReading(int bpm, int hrv, int calma, const char* isoTs = nullptr) {
   String body = String("{\"p_mac\":\"") + deviceMac +
                 "\",\"p_bpm\":" + bpm +
                 ",\"p_hrv\":" + hrv +
                 ",\"p_calma\":" + calma +
-                ",\"p_estado\":\"" + estadoFromCalma(calma) + "\"}";
+                ",\"p_estado\":\"" + estadoFromCalma(calma) + "\"";
+  if (isoTs) body += String(",\"p_ts\":\"") + isoTs + "\"";
+  body += "}";
   String resp;
   int code = callRpc("ingest_biometria", body, &resp);
-  Serial.printf("[Supabase] ingest %d  bpm=%d hrv=%d calma=%d (%s) %s\n",
-                code, bpm, hrv, calma, estadoFromCalma(calma), resp.c_str());
+  Serial.printf("[Supabase] ingest %d  bpm=%d hrv=%d calma=%d (%s)%s %s\n",
+                code, bpm, hrv, calma, estadoFromCalma(calma),
+                isoTs ? " [offline]" : "", resp.c_str());
   if (code > 0) blinkActivity();
+}
+
+// Envía todas las lecturas guardadas en offBuf con sus timestamps reales (NTP).
+void flushBuffer() {
+  if (offCount == 0) return;
+  int tail = (offHead - offCount + BUF_SIZE) % BUF_SIZE;
+  Serial.printf("[Buffer] Vaciando %d lecturas offline…\n", offCount);
+  int sent = 0;
+  while (offCount > 0 && WiFi.status() == WL_CONNECTED) {
+    OfflineReading& r = offBuf[tail];
+    char ts[25] = {0};
+    if (ntpSynced) {
+      // Calcula el epoch real de la lectura a partir del offset desde la sync NTP.
+      long msAgo = (long)(ntpMs - r.capturedAt);
+      time_t readingEpoch = ntpEpoch - msAgo / 1000;
+      struct tm t;
+      gmtime_r(&readingEpoch, &t);
+      strftime(ts, sizeof(ts), "%Y-%m-%dT%H:%M:%SZ", &t);
+    }
+    sendReading(r.bpm, r.hrv, r.calma, ntpSynced ? ts : nullptr);
+    tail = (tail + 1) % BUF_SIZE;
+    offCount--;
+    sent++;
+    delay(100);   // pausa breve para no saturar la API
+  }
+  Serial.printf("[Buffer] %d lecturas enviadas.\n", sent);
 }
 
 void initSensor() {
@@ -222,6 +303,10 @@ button:disabled{opacity:.55}
 <div id=form>
 <label>Red WiFi</label>
 <select id=ssid><option>Buscando redes…</option></select>
+<label>Usuario <span style="color:#9aa7b4">(eduroam: usuario@universidad.edu)</span></label>
+<input id=user type=text placeholder="Dejar vacío si la red solo tiene clave" autocomplete=off spellcheck=false inputmode=email>
+<label id=anonlbl style="display:none">Identidad anónima <span style="color:#9aa7b4">(outer identity — se auto-completa)</span></label>
+<input id=anon type=text placeholder="anonymous@universidad.edu" autocomplete=off spellcheck=false inputmode=email style="display:none">
 <label>Contraseña</label>
 <input id=pass type=password placeholder="Contraseña de la red" autocomplete=off>
 <button id=go>Conectar</button>
@@ -234,11 +319,19 @@ fetch('/scan').then(function(r){return r.json()}).then(function(n){var s=$('ssid
  if(!n.length){s.innerHTML='<option>(no se vieron redes)</option>';return}
  n.forEach(function(x){var o=document.createElement('option');o.textContent=x;s.appendChild(o)})}).catch(function(){});
 function show(c,h){var e=$('st');e.className='st '+c;e.innerHTML=h;e.style.display='block'}
+$('user').oninput=function(){
+ var u=$('user').value,at=u.indexOf('@');
+ var show=u.length>0;
+ $('anonlbl').style.display=show?'block':'none';
+ $('anon').style.display=show?'block':'none';
+ if(at>0)$('anon').value='anonymous'+u.substring(at);
+ else if(!u.length)$('anon').value='';
+};
 $('go').onclick=function(){
- var ssid=$('ssid').value,pass=$('pass').value;
+ var ssid=$('ssid').value,user=$('user').value,anon=$('anon').value,pass=$('pass').value;
  $('go').disabled=true;show('wait','<span class=sp></span>Guardando y conectando…');
  fetch('/save',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
-  body:'ssid='+encodeURIComponent(ssid)+'&pass='+encodeURIComponent(pass)})
+  body:'ssid='+encodeURIComponent(ssid)+'&user='+encodeURIComponent(user)+'&anon='+encodeURIComponent(anon)+'&pass='+encodeURIComponent(pass)})
   .then(function(){setTimeout(poll,1200)}).catch(function(){setTimeout(poll,1200)});
 };
 function poll(){fetch('/status').then(function(r){return r.json()}).then(function(d){
@@ -261,19 +354,46 @@ void handleScan() {
   server.send(200, "application/json", j);
 }
 
-void beginConnect(const String& ssid, const String& pass) {
-  pendSsid = ssid; pendPass = pass;
-  WiFi.begin(ssid.c_str(), pass.c_str());
+// Conecta según el tipo de red:
+//   user vacío → WPA2-Personal (clave simple)
+//   user con @ → WPA2-Enterprise PEAP/MSCHAPv2 (eduroam, redes universitarias)
+// eduroam requiere outer identity ≠ inner username. Si anon está vacío se
+// auto-genera como "anonymous@dominio" (estándar eduroam RFC 7542).
+void wifiConnect(const String& ssid, const String& user, const String& anon, const String& pass) {
+  WiFi.disconnect(true);
+  delay(100);
+  if (user.length()) {
+    String outer = anon.length() ? anon : user;
+    if (!anon.length()) {
+      int at = user.indexOf('@');
+      if (at > 0) outer = "anonymous" + user.substring(at);
+    }
+    Serial.printf("[WiFi] Enterprise — outer: %s  inner: %s\n", outer.c_str(), user.c_str());
+    WiFi.begin(ssid.c_str(), WPA2_AUTH_PEAP,
+               outer.c_str(),  // outer identity (anonymous@dominio)
+               user.c_str(),   // inner username  (user@dominio)
+               pass.c_str());
+  } else {
+    WiFi.begin(ssid.c_str(), pass.c_str());
+  }
+}
+
+void beginConnect(const String& ssid, const String& user, const String& anon, const String& pass) {
+  pendSsid = ssid; pendUser = user; pendAnon = anon; pendPass = pass;
+  wifiConnect(ssid, user, anon, pass);
   connState = CONNECTING;
   connStart = millis();
-  Serial.printf("[WiFi] Intentando conectar a \"%s\"…\n", ssid.c_str());
+  Serial.printf("[WiFi] Intentando conectar a \"%s\"%s…\n",
+                ssid.c_str(), user.length() ? " (Enterprise)" : "");
 }
 
 void handleSave() {
   String ssid = server.arg("ssid");
+  String user = server.arg("user");
+  String anon = server.arg("anon");   // outer identity (eduroam); vacío = auto
   String pass = server.arg("pass");
   if (ssid.length() == 0) { server.send(400, "text/plain", "ssid vacío"); return; }
-  beginConnect(ssid, pass);
+  beginConnect(ssid, user, anon, pass);
   server.send(200, "text/plain", "ok");
 }
 
@@ -305,7 +425,7 @@ void startAPPortal() {
   // Si había credenciales guardadas, seguimos intentándolas en segundo plano
   // (si la red reaparece, conecta sola sin tocar el portal).
   String s = prefs.getString("ssid", "");
-  if (s.length()) beginConnect(s, prefs.getString("pass", ""));
+  if (s.length()) beginConnect(s, prefs.getString("user", ""), prefs.getString("anon", ""), prefs.getString("pass", ""));
 
   Serial.printf("[WiFi] Portal AP+STA abierto: \"%s\" (192.168.4.1). LED parpadeando.\n",
                 apName().c_str());
@@ -341,7 +461,7 @@ void setup() {
   pinMode(BOOT_BUTTON, INPUT_PULLUP);
   pinMode(STATUS_LED, OUTPUT);
   digitalWrite(STATUS_LED, LOW);
-  Serial.println("\n=== CalmBand ESP32 ===");
+  Serial.println("\n=== CalmBand ESP32 v2.1 ===");
 
   // MAC desde eFuse (siempre disponible).
   uint8_t mac[6];
@@ -365,9 +485,9 @@ void setup() {
   if (ssid.length()) {
     Serial.printf("[WiFi] Red guardada: \"%s\". Conectando…\n", ssid.c_str());
     WiFi.mode(WIFI_STA);
-    WiFi.begin(ssid.c_str(), prefs.getString("pass", "").c_str());
+    wifiConnect(ssid, prefs.getString("user", ""), prefs.getString("anon", ""), prefs.getString("pass", ""));
     unsigned long t0 = millis();
-    while (WiFi.status() != WL_CONNECTED && millis() - t0 < 15000) {
+    while (WiFi.status() != WL_CONNECTED && millis() - t0 < 30000) {
       updateStatusLed(); delay(50);
     }
   }
@@ -376,7 +496,9 @@ void setup() {
     Serial.printf("[WiFi] Conectado. IP: %s\n", WiFi.localIP().toString().c_str());
     connState = CONNECTED;
     celebrateConnected();
+    syncNTP();
     registerDevice();
+    prevWifiOk = true;
   } else {
     startAPPortal();   // sin red o falló: abre el portal a medida
   }
@@ -396,14 +518,16 @@ void loop() {
       connState = CONNECTED;
       connectedAt = millis();
       prefs.putString("ssid", pendSsid);
+      prefs.putString("user", pendUser);
+      prefs.putString("anon", pendAnon);
       prefs.putString("pass", pendPass);
       Serial.printf("[WiFi] Conectado. IP: %s\n", WiFi.localIP().toString().c_str());
       celebrateConnected();
       registerDevice();
       lastSend = millis();
-    } else if (millis() - connStart > 20000) {
+    } else if (millis() - connStart > 35000) {
       connState = FAILED;
-      Serial.println("[WiFi] Conexión fallida (clave incorrecta o red fuera de alcance).");
+      Serial.println("[WiFi] Conexión fallida (clave incorrecta, red fuera de alcance o servidor RADIUS tardó demasiado).");
     }
   }
 
@@ -416,10 +540,30 @@ void loop() {
   updateStatusLed();
   maybeResetWiFi();
 
-  // Sin WiFi: el LED parpadea y no enviamos (el stack reconecta solo).
-  if (WiFi.status() != WL_CONNECTED) return;
+  bool wifiOk = (WiFi.status() == WL_CONNECTED);
 
-  // ── Lectura de pulso ──
+  if (!wifiOk) {
+    // Sin WiFi: gestionar reconexión automática y eventual reapertura del portal.
+    if (!apActive) {
+      if (disconnectedSince == 0) disconnectedSince = millis();
+      else if (millis() - disconnectedSince > REOPEN_PORTAL_MS) {
+        Serial.println("[WiFi] Sin conexión sostenida — reabriendo portal.");
+        startAPPortal();
+        disconnectedSince = 0;
+      }
+    }
+    // No hacemos return: el sensor sigue leyendo y las métricas van al buffer.
+  } else {
+    disconnectedSince = 0;
+    // Transición offline → online: sincronizar NTP y vaciar el buffer acumulado.
+    if (!prevWifiOk) {
+      if (!ntpSynced) syncNTP();
+      if (offCount > 0) flushBuffer();
+    }
+  }
+  prevWifiOk = wifiOk;
+
+  // ── Lectura de pulso (SIEMPRE, con o sin WiFi) ──
   if (sensorOk) {
     long ir = particleSensor.getIR();
     if (ir == 0) {
@@ -444,7 +588,7 @@ void loop() {
     }
   }
 
-  // ── Envío periódico ──
+  // ── Envío / buffering periódico ──
   if (millis() - lastSend >= SEND_INTERVAL_MS) {
     lastSend = millis();
 
@@ -452,14 +596,29 @@ void loop() {
     long ir = sensorOk ? particleSensor.getIR() : 0;
 
     if (rrCount < MIN_BEATS_TO_SEND) {
-      registerDevice();
-      Serial.printf("[Lectura] solo presencia — IR=%ld latidos=%d/%d\n",
-                    ir, rrCount, MIN_BEATS_TO_SEND);
+      // Pocas muestras: solo mandamos heartbeat de presencia si hay WiFi.
+      if (wifiOk) {
+        registerDevice();
+        Serial.printf("[Lectura] solo presencia — IR=%ld latidos=%d/%d\n",
+                      ir, rrCount, MIN_BEATS_TO_SEND);
+      } else {
+        Serial.printf("[Lectura] sin WiFi — IR=%ld latidos=%d/%d (esperando)\n",
+                      ir, rrCount, MIN_BEATS_TO_SEND);
+      }
       if (sensorOk && ir == 0) { Serial.println("[Sensor] IR=0 — reinicializando…"); initSensor(); }
       return;
     }
-    int bpm = bpmFromRR();
-    int hrv = constrain(hrvFromRR(), 0, 120);
-    sendReading(bpm, hrv, computeCalma(bpm, hrv));
+
+    int bpm   = bpmFromRR();
+    int hrv   = constrain(hrvFromRR(), 0, 120);
+    int calma = computeCalma(bpm, hrv);
+
+    if (wifiOk) {
+      sendReading(bpm, hrv, calma);
+    } else {
+      offPush(bpm, hrv, calma);
+      Serial.printf("[Buffer] +1 offline — bpm=%d hrv=%d calma=%d  cola=%d/%d\n",
+                    bpm, hrv, calma, offCount, BUF_SIZE);
+    }
   }
 }

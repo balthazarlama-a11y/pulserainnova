@@ -47,13 +47,16 @@ END $$;
 -- 4. Ingesta de biometría resuelta por MAC.
 --    Si la pulsera aún no está asignada a una persona, no inserta lectura,
 --    solo actualiza presencia y responde 'unassigned'.
+--    p_ts: timestamp real de la lectura (para datos capturados offline).
+--          Si es NULL se usa now() (comportamiento anterior).
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.ingest_biometria(
   p_mac    text,
   p_bpm    int,
   p_hrv    int,
   p_calma  int,
-  p_estado text
+  p_estado text,
+  p_ts     timestamptz DEFAULT NULL
 ) RETURNS text
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE v_nino uuid;
@@ -72,8 +75,8 @@ BEGIN
     RETURN 'unassigned';
   END IF;
 
-  INSERT INTO sesiones_biometria ("niño_id", bpm, hrv, nivel_calma, estado)
-  VALUES (v_nino, p_bpm, p_hrv, p_calma, p_estado);
+  INSERT INTO sesiones_biometria ("niño_id", bpm, hrv, nivel_calma, estado, "timestamp")
+  VALUES (v_nino, p_bpm, p_hrv, p_calma, p_estado, COALESCE(p_ts, now()));
   RETURN 'ok';
 END $$;
 
@@ -123,6 +126,6 @@ $$;
 --    El tutor autenticado puede listar pendientes y reclamar.
 -- ----------------------------------------------------------------------------
 GRANT EXECUTE ON FUNCTION public.register_device(text,text,text)        TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.ingest_biometria(text,int,int,int,text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.ingest_biometria(text,int,int,int,text,timestamptz) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.list_pending_devices()                 TO authenticated;
 GRANT EXECUTE ON FUNCTION public.claim_device(text,uuid,text,text)      TO authenticated;
