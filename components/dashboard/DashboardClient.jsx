@@ -17,7 +17,7 @@ import { RECOMMENDATIONS } from "@/lib/recommendationsFallback";
 import { getStressKey, normalizeAccent, SEMANTIC_COLORS } from "@/lib/utils";
 import {
   stressFromCalma, fetchLatestSession, fetch24hSessions, toStressSeries,
-  fetchWeeklyData, fetchTodayActivity,
+  fetchWeeklyData, fetchTodayActivity, fetchDevicePresence,
 } from "@/lib/biometria";
 
 // Iconos por clave para recomendaciones y actividad. Definidos a nivel de módulo
@@ -622,7 +622,8 @@ export default function DashboardClient({ user, profile }) {
   const [activity, setActivity] = useState([]);
   const [connection, setConnection] = useState("disconnected");
   const [greeting, setGreeting] = useState("Hola");
-  const lastHeartbeatRef = useRef(0);
+  const lastHeartbeatRef = useRef(0);   // última lectura biométrica (pulso)
+  const lastDeviceSeenRef = useRef(0);  // última vez que la pulsera "se reportó"
 
   const ninoId = selectedPerson?.id || null;
 
@@ -637,50 +638,74 @@ export default function DashboardClient({ user, profile }) {
       setStress(null); setBpm(null); setSeries([]); setWeekly([]); setActivity([]);
       setConnection("disconnected");
       lastHeartbeatRef.current = 0;
+      lastDeviceSeenRef.current = 0;
       return;
     }
 
     let active = true;
 
+    // Estado de conexión a partir de DOS señales: la pulsera se auto-registra
+    // (last_seen) cada pocos segundos aunque el sensor aún no logre una lectura de
+    // pulso. Así el panel muestra "Conectado/Parcial" en cuanto la pulsera está
+    // online, sin esperar a la primera biometría.
     const checkStatus = () => {
-      const age = Date.now() - lastHeartbeatRef.current;
-      if (!lastHeartbeatRef.current) { setConnection("disconnected"); return; }
-      setConnection(age < 120000 ? "connected" : age < 600000 ? "partial" : "disconnected");
+      const now = Date.now();
+      const readingAge = lastHeartbeatRef.current ? now - lastHeartbeatRef.current : Infinity;
+      const deviceAge  = lastDeviceSeenRef.current ? now - lastDeviceSeenRef.current : Infinity;
+      if (readingAge < 120000) { setConnection("connected"); return; }   // pulso reciente
+      if (deviceAge  < 120000) { setConnection("partial");   return; }   // online, sin pulso aún
+      if (readingAge < 600000) { setConnection("partial");   return; }   // hubo pulso hace un rato
+      setConnection("disconnected");
+    };
+
+    const refreshPresence = async () => {
+      const seen = await fetchDevicePresence(supabase, ninoId);
+      if (!active) return;
+      if (seen) lastDeviceSeenRef.current = seen;
+      checkStatus();
     };
 
     const loadAll = async () => {
-      const [latest, sessions, week, acts] = await Promise.all([
+      const [latest, sessions, week, acts, devSeen] = await Promise.all([
         fetchLatestSession(supabase, ninoId),
         fetch24hSessions(supabase, ninoId),
         fetchWeeklyData(supabase, ninoId),
         fetchTodayActivity(supabase, ninoId),
+        fetchDevicePresence(supabase, ninoId),
       ]);
       if (!active) return;
+
+      if (devSeen) lastDeviceSeenRef.current = devSeen;
 
       if (latest?.timestamp) {
         lastHeartbeatRef.current = new Date(latest.timestamp).getTime();
         if (latest.bpm != null) setBpm(latest.bpm);
         const s = stressFromCalma(latest.nivel_calma);
         if (s != null) setStress(s);
-        checkStatus();
       } else {
         setStress(null); setBpm(null);
-        setConnection("disconnected");
       }
       setSeries(toStressSeries(sessions));
       setWeekly(week);
       setActivity(acts);
+      checkStatus();
     };
     loadAll();
 
-    const interval = setInterval(checkStatus, 30000);
+    // Refrescar presencia + recalcular estado periódicamente (la presencia de la
+    // pulsera no llega por Realtime, así que la consultamos).
+    const interval = setInterval(refreshPresence, 30000);
 
     const channel = supabase
       .channel(`biometria-${ninoId}`)
+      // Sin filtro server-side: el nombre de columna "niño_id" (con ñ) no es
+      // fiable en los filtros de Realtime; filtramos en el cliente.
       .on("postgres_changes",
-        { event: "INSERT", schema: "public", table: "sesiones_biometria", filter: `niño_id=eq.${ninoId}` },
+        { event: "INSERT", schema: "public", table: "sesiones_biometria" },
         (payload) => {
+          if (String(payload.new?.["niño_id"]) !== String(ninoId)) return;
           lastHeartbeatRef.current = Date.now();
+          lastDeviceSeenRef.current = Date.now();
           setConnection("connected");
           if (payload.new.bpm != null) setBpm(payload.new.bpm);
           const s = stressFromCalma(payload.new.nivel_calma);
