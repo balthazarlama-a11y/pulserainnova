@@ -343,6 +343,7 @@ const RecommendationPanel = ({ stress, bpm, bpmResting, series, childName, child
   const [loading, setLoading]         = useState(false);
   const [isAI, setIsAI]               = useState(false);
   const [aiError, setAiError]         = useState(null);
+  const [needsNewKey, setNeedsNewKey] = useState(false);
   const [selectedRec, setSelectedRec] = useState(null);
 
   const state     = stressState(stress);
@@ -391,6 +392,7 @@ const RecommendationPanel = ({ stress, bpm, bpmResting, series, childName, child
 
     setLoading(true);
     setAiError(null);
+    setNeedsNewKey(false);
 
     try {
       const res = await fetch("/api/recommendations", {
@@ -407,13 +409,18 @@ const RecommendationPanel = ({ stress, bpm, bpmResting, series, childName, child
       });
 
       const data = await res.json();
-      if (!res.ok || data.fallback) throw new Error(data.error || `HTTP ${res.status}`);
+      if (!res.ok || data.fallback) {
+        const err = new Error(data.error || `HTTP ${res.status}`);
+        err.needNewKey = Boolean(data.needNewKey);
+        throw err;
+      }
 
       setRecs(data.recommendations);
       setIsAI(true);
     } catch (err) {
       console.warn("[RecommendationPanel] Fallback local:", err.message);
       setAiError(err.message);
+      setNeedsNewKey(Boolean(err.needNewKey));
       setRecs(RECOMMENDATIONS[stressKey] || RECOMMENDATIONS.mild);
       setIsAI(false);
     } finally {
@@ -454,9 +461,17 @@ const RecommendationPanel = ({ stress, bpm, bpmResting, series, childName, child
 
         {offline && (
           <div className="mb-3.5 px-3.5 py-2.5 rounded-xl flex items-center gap-2.5 text-[12px]"
-            style={{ background: `${SEMANTIC_COLORS.attention}14`, border: `1px solid ${SEMANTIC_COLORS.attention}40`, color: "var(--ink-muted)" }}>
-            <IconAlertTriangle size={14} style={{ color: SEMANTIC_COLORS.attention }} aria-hidden="true"/>
-            <span className="flex-1">Sin conexión — mostrando sugerencias guardadas.</span>
+            style={{
+              background: needsNewKey ? "rgba(220, 77, 85, 0.12)" : `${SEMANTIC_COLORS.attention}14`,
+              border: needsNewKey ? "1px solid rgba(220, 77, 85, 0.35)" : `1px solid ${SEMANTIC_COLORS.attention}40`,
+              color: "var(--ink-muted)",
+            }}>
+            <IconAlertTriangle size={14} style={{ color: needsNewKey ? SEMANTIC_COLORS.danger : SEMANTIC_COLORS.attention }} aria-hidden="true"/>
+            <span className="flex-1">
+              {needsNewKey
+                ? "La clave de NVIDIA no funcionó. Pegá otra en .env.local y reiniciá el servidor."
+                : "Sin conexión — mostrando sugerencias guardadas."}
+            </span>
             <button onClick={() => fetchRecs(true)} className="font-semibold underline-offset-2 hover:underline" style={{ color: SEMANTIC_COLORS.attention }}>
               Reintentar
             </button>
@@ -656,12 +671,7 @@ export default function DashboardClient({ user, profile }) {
     };
 
     const loadAll = async () => {
-      const [latest, sessions, week, acts] = await Promise.all([
-        fetchLatestSession(supabase, ninoId),
-        fetch24hSessions(supabase, ninoId),
-        fetchWeeklyData(supabase, ninoId),
-        fetchTodayActivity(supabase, ninoId),
-      ]);
+      const latest = await fetchLatestSession(supabase, ninoId);
       if (!active) return;
 
       if (latest?.timestamp) {
@@ -675,9 +685,17 @@ export default function DashboardClient({ user, profile }) {
         setStress(null); setBpm(null);
         setConnection("disconnected");
       }
-      setSeries(toStressSeries(sessions));
-      setWeekly(week);
-      setActivity(acts);
+
+      Promise.allSettled([
+        fetch24hSessions(supabase, ninoId),
+        fetchWeeklyData(supabase, ninoId),
+        fetchTodayActivity(supabase, ninoId),
+      ]).then(([sessionsRes, weekRes, actsRes]) => {
+        if (!active) return;
+        if (sessionsRes.status === "fulfilled") setSeries(toStressSeries(sessionsRes.value));
+        if (weekRes.status === "fulfilled") setWeekly(weekRes.value);
+        if (actsRes.status === "fulfilled") setActivity(actsRes.value);
+      });
     };
     loadAll();
 

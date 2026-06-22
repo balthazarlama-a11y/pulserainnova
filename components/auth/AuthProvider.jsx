@@ -30,12 +30,11 @@ export function AuthProvider({ children }) {
     supabase.auth.getSession().then(({ data }) => {
       if (!isMounted) return;
       setSession(data.session);
+      setLoading(false);
       if (data.session?.user) {
-        fetchProfile(data.session.user.id).then(() => {
-          if (isMounted) setLoading(false);
-        });
+        fetchProfile(data.session.user.id);
       } else {
-        setLoading(false);
+        setProfile(null);
       }
     });
 
@@ -47,6 +46,7 @@ export function AuthProvider({ children }) {
           fetchProfile(nextSession.user.id);
         } else {
           setProfile(null);
+          setLoading(false);
         }
       }
     );

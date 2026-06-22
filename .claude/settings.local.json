@@ -7,7 +7,26 @@
       "Bash(git push *)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "mcp__claude_ai_Supabase__list_projects"
+      "mcp__claude_ai_Supabase__list_projects",
+      "PowerShell(Get-CimInstance *)",
+      "PowerShell(Get-Process *)",
+      "PowerShell(npm run *)",
+      "PowerShell(git -C $repo add firmware/calmband_esp32/calmband_esp32.ino firmware/ROADMAP.md supabase/realtime_and_cleanup.sql components/pairing/PairingClient.jsx)",
+      "PowerShell(git -C $repo status --short)",
+      "PowerShell($repo=\"C:\\\\Users\\\\balth\\\\Desktop\\\\PulseraInnova\")",
+      "PowerShell(\"--- staged ---\")",
+      "PowerShell(git -C $repo branch --show-current)",
+      "PowerShell(git -C $repo add firmware/calmband_esp32/calmband_esp32.ino)",
+      "PowerShell(git -C $repo push origin main 2>&1)",
+      "PowerShell(\"--- rama actual ---\")",
+      "PowerShell(\"=== PUSH ===\")",
+      "Bash(~/arduino-cli version *)",
+      "Bash(~/arduino-cli board *)",
+      "Bash(~/arduino-cli/arduino-cli.exe version *)",
+      "Bash(~/arduino-cli/arduino-cli.exe board *)",
+      "Bash(~/arduino-cli/arduino-cli.exe compile *)",
+      "Bash(~/arduino-cli/arduino-cli.exe upload *)",
+      "mcp__claude_ai_Supabase__apply_migration"
     ]
   }
 }

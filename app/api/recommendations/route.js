@@ -6,6 +6,32 @@ const NVIDIA_API_URL = "https://integrate.api.nvidia.com/v1/chat/completions";
 // Override con NVIDIA_MODEL en .env.local si querés probar otro tamaño.
 const MODEL = process.env.NVIDIA_MODEL || "meta/llama-3.2-3b-instruct";
 
+function missingKeyResponse() {
+  return NextResponse.json(
+    {
+      error: "NVIDIA_API_KEY no configurada en .env.local",
+      fallback: true,
+      needNewKey: true,
+    },
+    { status: 503 }
+  );
+}
+
+function invalidKeyResponse(status, detail = "") {
+  const isAuthError = status === 401 || status === 403;
+  return NextResponse.json(
+    {
+      error: isAuthError
+        ? "La clave de NVIDIA no es válida o no tiene permisos"
+        : `NVIDIA respondió ${status}`,
+      detail,
+      fallback: true,
+      needNewKey: isAuthError,
+    },
+    { status: isAuthError ? 503 : status }
+  );
+}
+
 // ─── Extrae el primer objeto JSON del texto del LLM ───────────────────────────
 function extractJSON(text) {
   try { return JSON.parse(text.trim()); } catch {}
@@ -45,10 +71,7 @@ export async function POST(request) {
   const apiKey = process.env.NVIDIA_API_KEY;
 
   if (!apiKey) {
-    return NextResponse.json(
-      { error: "NVIDIA_API_KEY no configurada en .env.local", fallback: true },
-      { status: 503 }
-    );
+    return missingKeyResponse();
   }
 
   let body;
@@ -100,10 +123,7 @@ export async function POST(request) {
   if (!nvidiaRes.ok) {
     const txt = await nvidiaRes.text().catch(() => "");
     console.error(`[recommendations] NVIDIA ${nvidiaRes.status}:`, txt.slice(0, 200));
-    return NextResponse.json(
-      { error: `NVIDIA respondió ${nvidiaRes.status}`, fallback: true },
-      { status: nvidiaRes.status }
-    );
+    return invalidKeyResponse(nvidiaRes.status, txt.slice(0, 200));
   }
 
   let apiData;
