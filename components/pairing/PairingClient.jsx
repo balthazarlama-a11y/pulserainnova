@@ -8,6 +8,10 @@ import { usePeople } from "@/lib/peopleContext";
 const inputCls = "w-full bg-surface-elevated border border-line rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand/50 focus:ring-1 focus:ring-brand/50 transition-colors";
 const labelCls = "text-sm font-medium text-ink-muted block mb-2";
 
+// Nombre visible de la pulsera, idéntico a su red WiFi "CalmBand-XXXX": los 4
+// últimos del MAC. Así el usuario reconoce la suya (la red a la que se conectó).
+const apLabel = (mac) => "CalmBand-" + (mac || "").replace(/:/g, "").slice(-4).toUpperCase();
+
 const ScanRadar = ({ children }) => (
   <div className="relative w-[160px] h-[160px] mx-auto flex items-center justify-center">
     {[0, 0.5, 1, 1.5].map((d) => (
@@ -269,7 +273,8 @@ export default function PairingClient() {
                             <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-calm" title="Encendida ahora"/>
                           </span>
                           <div className="min-w-0 flex-1">
-                            <div className="text-[13px] font-medium font-mono truncate">{d.mac_address}</div>
+                            <div className="text-[13px] font-semibold truncate">{apLabel(d.mac_address)}</div>
+                            <div className="text-[11px] font-mono text-ink-faint truncate">{d.mac_address}</div>
                             <div className="text-[11px] text-ink-faint">
                               {d.asignada
                                 ? "En uso por otra cuenta · al conectar se moverá a la tuya"
