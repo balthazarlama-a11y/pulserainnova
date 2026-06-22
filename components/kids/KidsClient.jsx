@@ -102,7 +102,7 @@ const BreathingExercise = ({ onClose, onComplete }) => {
   const [phase, setPhase] = useState("inhale");
   const [phaseSec, setPhaseSec] = useState(0);
   const [finished, setFinished] = useState(false); // completó todos los niveles
-  const soundRef = useRef(true);
+  const [soundOn, setSoundOn] = useState(true);
 
   const levelCfg = BREATH_LEVELS[level];
   const cfg = levelCfg.cfg;
@@ -112,10 +112,10 @@ const BreathingExercise = ({ onClose, onComplete }) => {
   // Tono guía al cambiar de fase
   useEffect(() => {
     if (!running || finished) return;
-    if (!soundRef.current) return;
+    if (!soundOn) return;
     if (phase === "inhale") playBreathTone("inhale");
     else if (phase === "exhale") playBreathTone("exhale");
-  }, [phase, running, finished]);
+  }, [phase, running, finished, soundOn]);
 
   useEffect(() => {
     if (!running || finished) return;
@@ -145,7 +145,7 @@ const BreathingExercise = ({ onClose, onComplete }) => {
   const isLastLevel = level >= BREATH_LEVELS.length - 1;
 
   const goNextLevel = () => {
-    if (soundRef.current) playChime();
+    if (soundOn) playChime();
     if (isLastLevel) {
       setFinished(true);
     } else {
@@ -164,9 +164,11 @@ const BreathingExercise = ({ onClose, onComplete }) => {
   const scale = maxScale;
 
   const toggleSound = () => {
-    soundRef.current = !soundRef.current;
-    setMuted(!soundRef.current);
-    setLevel(l => l); // forzar re-render
+    setSoundOn(prev => {
+      const next = !prev;
+      setMuted(!next);
+      return next;
+    });
   };
 
   return (
@@ -263,7 +265,7 @@ const BreathingExercise = ({ onClose, onComplete }) => {
               marginTop: 18, padding: "7px 14px", borderRadius: 999, fontSize: 12, fontWeight: 600,
               background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.18)",
               color: "#fff", cursor: "pointer", fontFamily: "Inter, sans-serif"
-            }}>{soundRef.current ? "🔊 Sonido" : "🔇 Silencio"}</button>
+            }}>{soundOn ? "🔊 Sonido" : "🔇 Silencio"}</button>
           </>
         )}
       </div>
