@@ -723,9 +723,26 @@ export default function DashboardClient({ user, profile }) {
         if (actsRes.status === "fulfilled") setActivity(actsRes.value);
       });
     };
+    // Red de seguridad: trae la última lectura por REST por si el canal realtime
+    // se durmió (cambio de pestaña, WiFi inestable, token renovado, etc.).
+    const syncLatest = async () => {
+      const latest = await fetchLatestSession(supabase, ninoId);
+      if (!active || !latest?.timestamp) return;
+      const ageMs = Date.now() - new Date(latest.timestamp).getTime();
+      if (ageMs < 15000) {                 // hay lectura fresca → reflejarla aunque realtime falle
+        lastHeartbeatRef.current = Date.now();
+        lastBiometricRef.current = Date.now();
+        if (latest.bpm != null) setBpm(latest.bpm);
+        const s = stressFromCalma(latest.nivel_calma);
+        if (s != null) setStress(s);
+        setConnection("connected");
+      }
+    };
+
     loadAll();
 
     const interval = setInterval(checkStatus, 30000);
+    const poll = setInterval(syncLatest, 7000);   // fallback cada 7 s
 
     let channel;
     const setupRealtime = () => {
@@ -760,9 +777,23 @@ export default function DashboardClient({ user, profile }) {
     };
     setupRealtime();
 
+    // Al volver a la pestaña/foco: refrescar datos y recrear el canal por si
+    // quedó zombi mientras estaba en segundo plano.
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        syncLatest();
+        setupRealtime();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+
     return () => {
       active = false;
       clearInterval(interval);
+      clearInterval(poll);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
       if (channel) supabase.removeChannel(channel);
     };
   }, [supabase, ninoId]);
