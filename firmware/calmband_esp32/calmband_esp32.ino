@@ -55,6 +55,9 @@ String pendSsid, pendPass;        // credenciales del intento en curso
 enum ConnState { IDLE, CONNECTING, CONNECTED, FAILED };
 ConnState connState = IDLE;
 unsigned long connStart = 0, connectedAt = 0;
+// Escaneo de redes asíncrono: en AP+STA un scan síncrono devuelve 0/negativo si
+// la radio está ocupada conectando. Lo lanzamos en background y cacheamos.
+unsigned long lastScanKick = 0;
 
 // ── LED de estado: FIJO = conectado · PARPADEO = configurar/sin WiFi ──
 void updateStatusLed() {
@@ -222,6 +225,7 @@ button:disabled{opacity:.55}
 <div id=form>
 <label>Red WiFi</label>
 <select id=ssid><option>Buscando redes…</option></select>
+<a id=rescan href="#" style="display:inline-block;margin-top:7px;font-size:12px;color:#7DD3B8;text-decoration:none">↻ Buscar redes de nuevo</a>
 <label>Contraseña</label>
 <input id=pass type=password placeholder="Contraseña de la red" autocomplete=off>
 <button id=go>Conectar</button>
@@ -230,9 +234,15 @@ button:disabled{opacity:.55}
 </div><script>
 var $=function(i){return document.getElementById(i)};
 fetch('/info').then(function(r){return r.json()}).then(function(d){$('mac').textContent='MAC '+d.mac});
-fetch('/scan').then(function(r){return r.json()}).then(function(n){var s=$('ssid');s.innerHTML='';
- if(!n.length){s.innerHTML='<option>(no se vieron redes)</option>';return}
- n.forEach(function(x){var o=document.createElement('option');o.textContent=x;s.appendChild(o)})}).catch(function(){});
+function loadScan(){fetch('/scan').then(function(r){return r.json()}).then(function(d){
+ var s=$('ssid');
+ if(d.scanning){s.innerHTML='<option>Buscando redes…</option>';setTimeout(loadScan,1600);return}
+ var nets=d.nets||[];
+ if(!nets.length){s.innerHTML='<option>(no se vieron redes — tocá ↻)</option>';return}
+ s.innerHTML='';nets.forEach(function(x){var o=document.createElement('option');o.textContent=x;s.appendChild(o)});
+}).catch(function(){setTimeout(loadScan,1600)})}
+$('rescan').onclick=function(e){e.preventDefault();$('ssid').innerHTML='<option>Buscando redes…</option>';loadScan();};
+loadScan();
 function show(c,h){var e=$('st');e.className='st '+c;e.innerHTML=h;e.style.display='block'}
 $('go').onclick=function(){
  var ssid=$('ssid').value,pass=$('pass').value;
@@ -252,12 +262,39 @@ function poll(){fetch('/status').then(function(r){return r.json()}).then(functio
 void handleRoot()   { server.send_P(200, "text/html", PORTAL_PAGE); }
 void handleInfo()   { server.send(200, "application/json", "{\"mac\":\"" + deviceMac + "\"}"); }
 
-void handleScan() {
-  int n = WiFi.scanNetworks();
-  String j = "[";
-  for (int i = 0; i < n; i++) { if (i) j += ","; j += "\"" + jsonEscape(WiFi.SSID(i)) + "\""; }
-  j += "]";
+// Lanza un escaneo en segundo plano (no bloquea el portal ni la conexión).
+void kickScan() {
   WiFi.scanDelete();
+  WiFi.scanNetworks(/*async=*/true, /*show_hidden=*/true);
+  lastScanKick = millis();
+}
+
+// /scan: si el escaneo aún corre o falló, avisa {"scanning":true} y el navegador
+// reintenta. Cuando hay resultados, devuelve {"nets":[...]} sin vacías ni repetidas.
+void handleScan() {
+  int st = WiFi.scanComplete();
+  if (st == WIFI_SCAN_RUNNING) {                 // -1: todavía buscando
+    server.send(200, "application/json", "{\"scanning\":true}");
+    return;
+  }
+  if (st < 0) {                                  // -2: falló o sin datos → relanzar
+    kickScan();
+    server.send(200, "application/json", "{\"scanning\":true}");
+    return;
+  }
+  String j = "{\"scanning\":false,\"nets\":[";
+  int added = 0;
+  for (int i = 0; i < st; i++) {
+    String s = WiFi.SSID(i);
+    if (s.length() == 0) continue;                       // ocultas / sin nombre
+    String esc = jsonEscape(s);
+    if (j.indexOf("\"" + esc + "\"") >= 0) continue;     // evitar duplicados
+    if (added++) j += ",";
+    j += "\"" + esc + "\"";
+  }
+  j += "]}";
+  WiFi.scanDelete();
+  kickScan();                                    // dejar uno listo para la próxima
   server.send(200, "application/json", j);
 }
 
@@ -301,6 +338,10 @@ void startAPPortal() {
   server.onNotFound(handleRoot);   // portal cautivo: cualquier URL muestra la página
   server.begin();
   apActive = true;
+
+  // Arrancamos ya un escaneo para que las redes estén listas cuando se abra la
+  // página (y no compita con el reintento de la red guardada de abajo).
+  kickScan();
 
   // Si había credenciales guardadas, seguimos intentándolas en segundo plano
   // (si la red reaparece, conecta sola sin tocar el portal).
