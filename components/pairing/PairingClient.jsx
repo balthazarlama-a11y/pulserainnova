@@ -12,6 +12,15 @@ const labelCls = "text-sm font-medium text-ink-muted block mb-2";
 // últimos del MAC. Así el usuario reconoce la suya (la red a la que se conectó).
 const apLabel = (mac) => "CalmBand-" + (mac || "").replace(/:/g, "").slice(-4).toUpperCase();
 
+// Guía de 5 pasos para conectar una pulsera (se muestra arriba del formulario).
+const GUIDE_STEPS = [
+  <>Prendé la pulsera. Desde el celular, conectate a su red WiFi <b className="text-brand font-mono">CalmBand-XXXX</b> y elegí tu red (2.4&nbsp;GHz) con su clave.</>,
+  <>Esperá a que el LED de la pulsera quede <b className="text-ink">fijo</b> — eso significa que ya tiene internet.</>,
+  <>Acá abajo, en <b className="text-ink">Dispositivo</b>, tu pulsera aparece sola como <b className="text-brand font-mono">CalmBand-XXXX</b> (el mismo nombre de su red). Tocala.</>,
+  <>Elegí o creá la <b className="text-ink">persona</b> a la que pertenece la pulsera.</>,
+  <>Tocá <b className="text-ink">“Vincular pulsera”</b>. Desde ese momento, los datos se guardan en tu cuenta.</>,
+];
+
 const ScanRadar = ({ children }) => (
   <div className="relative w-[160px] h-[160px] mx-auto flex items-center justify-center">
     {[0, 0.5, 1, 1.5].map((d) => (
@@ -46,6 +55,7 @@ export default function PairingClient() {
   const [scanning, setScanning] = useState(false);
   const [pending, setPending] = useState([]);
   const [scanned, setScanned] = useState(false);
+  const [showGuide, setShowGuide] = useState(true);  // guía de pasos plegable
 
   // `silent`: refresco en segundo plano (sin spinner). Auto-selecciona la
   // pulsera si hay una sola detectada y el usuario no eligió otra.
@@ -191,6 +201,31 @@ export default function PairingClient() {
               <p className="text-ink-dim text-sm leading-relaxed max-w-[400px] mx-auto">
                 Asigna la pulsera a una persona y a la red WiFi por la que enviará sus datos.
               </p>
+            </div>
+
+            {/* ── Guía de 5 pasos ── */}
+            <div className="card p-5 sm:p-6 mb-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <IconWatch size={15} className="text-brand"/> Cómo conectar tu pulsera
+                </div>
+                <button type="button" onClick={() => setShowGuide((v) => !v)}
+                  className="text-[12px] text-ink-dim hover:text-ink transition-colors">
+                  {showGuide ? "Ocultar" : "Ver pasos"}
+                </button>
+              </div>
+              {showGuide && (
+                <ol className="mt-4 space-y-3.5">
+                  {GUIDE_STEPS.map((s, i) => (
+                    <li key={i} className="flex gap-3">
+                      <span className="w-6 h-6 rounded-full bg-brand/15 text-brand text-[12px] font-bold flex items-center justify-center shrink-0">
+                        {i + 1}
+                      </span>
+                      <div className="text-[13px] text-ink-muted leading-relaxed pt-0.5">{s}</div>
+                    </li>
+                  ))}
+                </ol>
+              )}
             </div>
 
             <div className="card p-6 sm:p-8 space-y-6">
