@@ -105,15 +105,19 @@ BEGIN
 END $$;
 
 -- ----------------------------------------------------------------------------
--- 6. Listar pulseras pendientes (sin persona) vistas hace poco, para que el
---    tutor elija cuál vincular. Devuelve solo dispositivos no asignados.
+-- 6. Listar pulseras "online" (vistas hace poco) para conectarlas — estén o no
+--    ya asignadas a otra cuenta. Modelo de "toma libre": cualquiera puede
+--    conectarse a una pulsera; `asignada` indica si hoy la tiene otra persona
+--    (al conectarla, claim_device la mueve a quien la reclama). Solo expone
+--    MAC/modelo/last_seen, nunca a quién pertenece.
 -- ----------------------------------------------------------------------------
+DROP FUNCTION IF EXISTS public.list_pending_devices();
 CREATE OR REPLACE FUNCTION public.list_pending_devices()
-RETURNS TABLE (mac_address text, modelo text, last_seen timestamptz)
+RETURNS TABLE (mac_address text, modelo text, last_seen timestamptz, asignada boolean)
 LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
-  SELECT mac_address, modelo, last_seen
+  SELECT mac_address, modelo, last_seen, ("niño_id" IS NOT NULL) AS asignada
   FROM dispositivos
-  WHERE "niño_id" IS NULL
+  WHERE mac_address IS NOT NULL
     AND last_seen > now() - interval '10 minutes'
   ORDER BY last_seen DESC;
 $$;

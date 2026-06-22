@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { IconArrowLeft, IconWatch, IconCheck, IconAlertTriangle, IconRefresh, IconUser, IconWifi } from "@/components/marketing/icons";
 import { usePeople } from "@/lib/peopleContext";
@@ -43,20 +43,32 @@ export default function PairingClient() {
   const [pending, setPending] = useState([]);
   const [scanned, setScanned] = useState(false);
 
-  const scanForBands = async () => {
-    setScanning(true);
-    setScanned(false);
+  // `silent`: refresco en segundo plano (sin spinner). Auto-selecciona la
+  // pulsera si hay una sola detectada y el usuario no eligió otra.
+  const scanForBands = useCallback(async (silent = false) => {
+    if (!silent) { setScanning(true); setScanned(false); }
     try {
       const res = await fetch("/api/pairing/pending");
       const data = await res.json();
-      setPending(res.ok ? data.devices || [] : []);
+      const devices = res.ok ? (data.devices || []) : [];
+      setPending(devices);
+      if (devices.length === 1) setDevMac((cur) => cur || devices[0].mac_address);
     } catch {
       setPending([]);
     } finally {
-      setScanning(false);
+      if (!silent) setScanning(false);
       setScanned(true);
     }
-  };
+  }, []);
+
+  // Detecta sola al abrir la pantalla y refresca cada 4 s mientras se completa
+  // el formulario, así la pulsera aparece sin tocar nada.
+  useEffect(() => {
+    if (step !== "form") return;
+    scanForBands();
+    const id = setInterval(() => scanForBands(true), 4000);
+    return () => clearInterval(id);
+  }, [step, scanForBands]);
 
   // WiFi: solo una etiqueta para el panel. La red se configura EN la pulsera por
   // su portal cautivo (CalmBand-XXXX); la app no provisiona credenciales.
@@ -237,7 +249,7 @@ export default function PairingClient() {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className={labelCls + " mb-0"}>Dirección MAC</label>
-                    <button type="button" onClick={scanForBands} disabled={scanning}
+                    <button type="button" onClick={() => scanForBands()} disabled={scanning}
                       className="text-[12px] font-medium text-brand inline-flex items-center gap-1.5 hover:opacity-80 disabled:opacity-50 transition">
                       <IconRefresh size={13} className={scanning ? "animate-spin" : ""}/>
                       {scanning ? "Buscando…" : "Detectar pulseras"}
@@ -252,10 +264,17 @@ export default function PairingClient() {
                           className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-left transition-colors ${
                             devMac === d.mac_address ? "bg-brand/12 border-brand/35" : "bg-surface border-line hover:bg-surface-elevated"
                           }`}>
-                          <IconWatch size={16} className="text-brand shrink-0"/>
+                          <span className="relative shrink-0">
+                            <IconWatch size={16} className="text-brand"/>
+                            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-calm" title="Encendida ahora"/>
+                          </span>
                           <div className="min-w-0 flex-1">
                             <div className="text-[13px] font-medium font-mono truncate">{d.mac_address}</div>
-                            <div className="text-[11px] text-ink-faint">Pulsera detectada · lista para vincular</div>
+                            <div className="text-[11px] text-ink-faint">
+                              {d.asignada
+                                ? "En uso por otra cuenta · al conectar se moverá a la tuya"
+                                : "Pulsera detectada · lista para vincular"}
+                            </div>
                           </div>
                           {devMac === d.mac_address && <IconCheck size={15} className="text-brand shrink-0"/>}
                         </button>
