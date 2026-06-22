@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { stressState, Pill } from "@/components/marketing/primitives";
@@ -270,17 +271,41 @@ const WeekBars = ({ weekly }) => (
 );
 
 // ─── Modal de recomendación ───────────────────────────────────────────────────
+// Se monta vía portal en <body> para escapar de cualquier ancestro con `transform`
+// (que rompería `position: fixed` y descentraría el modal). El centrado se hace con
+// flexbox sobre el overlay a pantalla completa, no con translates.
 const RecModal = ({ rec, state, onClose }) => {
-  if (!rec) return null;
-  return (
-    <>
-      <div onClick={onClose} className="fixed inset-0 z-[10001] bg-black/40 backdrop-blur-sm" style={{ animation: "simFadeIn 0.2s ease-out" }}/>
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
+  // Escape para cerrar + bloqueo de scroll del fondo mientras está abierto.
+  useEffect(() => {
+    if (!rec) return;
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [rec, onClose]);
+
+  if (!rec || !mounted) return null;
+
+  return createPortal(
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm overflow-y-auto"
+      style={{ animation: "simFadeIn 0.2s ease-out" }}
+    >
       <div role="dialog" aria-modal="true" aria-label={rec.title}
-        className="card fixed top-1/2 left-1/2 z-[10002] -translate-x-1/2 -translate-y-1/2 w-[min(480px,calc(100vw-32px))] p-6 sm:p-7"
+        onClick={(e) => e.stopPropagation()}
+        className="card relative w-[min(480px,100%)] my-auto p-6 sm:p-7"
         style={{
           border: `1px solid ${state.hex}40`,
           boxShadow: `0 32px 80px -16px rgba(0,0,0,0.25), 0 0 48px -20px ${state.hex}55`,
-          animation: "recModalIn 0.25s cubic-bezier(.2,1.2,.4,1)",
+          animation: "recModalIn 0.28s cubic-bezier(.2,1.2,.4,1)",
         }}>
         <div className="flex items-start justify-between mb-5">
           <div className="flex items-center gap-3.5">
@@ -316,10 +341,11 @@ const RecModal = ({ rec, state, onClose }) => {
         </button>
       </div>
       <style>{`
-        @keyframes recModalIn { from { opacity:0; transform:translate(-50%,-48%) scale(0.95); } to { opacity:1; transform:translate(-50%,-50%) scale(1); } }
+        @keyframes recModalIn { from { opacity:0; transform:translateY(12px) scale(0.96); } to { opacity:1; transform:translateY(0) scale(1); } }
         @keyframes simFadeIn { from { opacity: 0; } to { opacity: 1; } }
       `}</style>
-    </>
+    </div>,
+    document.body
   );
 };
 
@@ -627,7 +653,7 @@ const NAV_ITEMS = (active) => [
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function DashboardClient({ user, profile }) {
   const router = useRouter();
-  const { supabase } = useAuth();
+  const { supabase, profile: authProfile } = useAuth();
   const { people, selectedPerson, selectedId, selectPerson, loading: peopleLoading } = usePeople();
 
   const [stress, setStress] = useState(null);
@@ -743,8 +769,11 @@ export default function DashboardClient({ user, profile }) {
 
   const hasReading = stress != null;
   const state = stressState(hasReading ? stress : 30);
-  const parentName = profile?.display_name || profile?.nombre || user?.email?.split("@")[0] || "Cuidador";
-  const parentEmail = profile?.email || user?.email || "";
+  // El cuidador es quien inicia sesión: tomamos su nombre del perfil (prop del
+  // servidor o, si no llega, del contexto de auth que lo busca en `usuarios`).
+  const caregiverProfile = profile || authProfile;
+  const parentName = caregiverProfile?.display_name || caregiverProfile?.nombre || user?.email?.split("@")[0] || "Cuidador";
+  const parentEmail = caregiverProfile?.email || user?.email || "";
 
   const calmaHoy = hasReading ? Math.round(100 - stress * 0.95) : null;
   const calmaAyer = useMemo(() => {
@@ -807,21 +836,12 @@ export default function DashboardClient({ user, profile }) {
 
         {/* Encabezado */}
         <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 mb-7 sm:mb-9 animate-slide-up">
-          <div className="flex items-center gap-3.5 min-w-0">
-            {selectedPerson && (
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg shrink-0 text-ink-on-accent"
-                style={{ background: "linear-gradient(135deg, #B8A4FF, #8B7FD8)" }}
-                title={selectedPerson.nombre} aria-label={`Avatar de ${selectedPerson.nombre}`}>
-                {(selectedPerson.avatar || selectedPerson.nombre?.[0] || "?").toUpperCase()}
-              </div>
-            )}
-            <div className="min-w-0">
-              <CardLabel className="tracking-[0.18em]">{greeting} · {parentName}</CardLabel>
-              <h1 className="font-display font-bold tracking-tight text-ink leading-[1.05] truncate mt-0.5"
-                style={{ fontSize: "clamp(1.55rem, 4vw, 2.35rem)" }}>
-                {selectedPerson?.nombre || "—"}
-              </h1>
-            </div>
+          <div className="min-w-0">
+            <CardLabel className="tracking-[0.18em]">Panel de cuidado</CardLabel>
+            <h1 className="font-display font-bold tracking-tight text-ink leading-[1.05] truncate mt-0.5"
+              style={{ fontSize: "clamp(1.55rem, 4vw, 2.35rem)" }}>
+              {greeting}, <span className="text-brand">{parentName}</span>
+            </h1>
           </div>
           <div className="flex items-center gap-2.5 shrink-0">
             <ConnectionStatus level={connection}/>

@@ -26,7 +26,17 @@
       "Bash(~/arduino-cli/arduino-cli.exe board *)",
       "Bash(~/arduino-cli/arduino-cli.exe compile *)",
       "Bash(~/arduino-cli/arduino-cli.exe upload *)",
-      "mcp__claude_ai_Supabase__apply_migration"
+      "mcp__claude_ai_Supabase__apply_migration",
+      "mcp__claude_ai_Vercel__list_teams",
+      "mcp__claude_ai_Vercel__get_runtime_logs",
+      "Bash(vercel --version)",
+      "Bash(vercel whoami *)",
+      "mcp__claude_ai_Supabase__list_tables",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/dashboard)",
+      "Bash(tail -n 6 \"C:\\\\\\\\Users\\\\\\\\balth\\\\\\\\AppData\\\\\\\\Local\\\\\\\\Temp\\\\\\\\claude\\\\\\\\C--Users-balth-Desktop-PulseraInnova\\\\\\\\9b44467e-2a48-4ea3-8408-c8fd3c13f6a9\\\\\\\\tasks\\\\\\\\b4qtukhs2.output\")",
+      "Bash(npx next *)",
+      "Bash(npm run *)",
+      "Bash(git commit *)"
     ]
   }
 }
