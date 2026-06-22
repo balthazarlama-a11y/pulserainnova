@@ -7,10 +7,16 @@ CREATE TABLE IF NOT EXISTS horario_actividades (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     niño_id UUID NOT NULL REFERENCES niños(id) ON DELETE CASCADE,
     dia SMALLINT NOT NULL CHECK (dia BETWEEN 0 AND 6),   -- 0 = Lun … 6 = Dom
-    hora TIME NOT NULL,
-    titulo TEXT NOT NULL,
+    hora TIME NOT NULL,                                  -- hora de inicio
+    hora_fin TIME,                                       -- hora de fin (opcional → bloque de clase)
+    titulo TEXT NOT NULL,                                -- nombre de la clase / actividad
+    categoria TEXT NOT NULL DEFAULT 'clase',             -- clase | comida | terapia | recreo | otro
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Para instalaciones que ya tenían la tabla sin estas columnas:
+ALTER TABLE horario_actividades ADD COLUMN IF NOT EXISTS hora_fin TIME;
+ALTER TABLE horario_actividades ADD COLUMN IF NOT EXISTS categoria TEXT NOT NULL DEFAULT 'clase';
 
 CREATE INDEX IF NOT EXISTS idx_horario_nino_dia ON horario_actividades ("niño_id", dia);
 
