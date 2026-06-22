@@ -11,10 +11,13 @@
  * Supabase (queda "pendiente") y el tutor la asigna a una persona desde la web.
  * Luego envía pulso real (MAX3010x) cada pocos segundos, identificándose por MAC.
  *
- * v2.1 — Buffer offline:
+ * v2.3 — Buffer offline PERSISTENTE (LittleFS):
  *   El sensor toma datos SIEMPRE, esté o no conectado a WiFi.
- *   Las lecturas sin conexión se guardan en un buffer circular (BUF_SIZE × 8s).
- *   Al reconectar se sincronizan por NTP y se envían con timestamps reales.
+ *   Las lecturas sin conexión se guardan en un archivo en la memoria flash
+ *   (/offline.dat). A diferencia del buffer en RAM anterior, los datos SOBREVIVEN
+ *   a reinicios y cortes de batería, y caben muchas horas de lecturas.
+ *   Al reconectar se sincronizan por NTP y se envían con timestamps reales; cuando
+ *   se vacía el archivo, se borra.
  *
  * Placa:     ESP32 Dev Module (FQBN esp32:esp32:esp32)
  * Sensor:    MAX30102 / MAX30105 / MAX30100  por I2C (SDA=GPIO21, SCL=GPIO22)
@@ -32,6 +35,7 @@
 #include <WebServer.h>
 #include <DNSServer.h>
 #include <Preferences.h>
+#include <LittleFS.h>           // buffer offline persistente en flash (sobrevive reinicios)
 #include <time.h>               // NTP / gmtime_r
 #include "esp_mac.h"            // esp_read_mac (MAC desde eFuse, disponible siempre)
 #include "MAX30105.h"
@@ -42,7 +46,7 @@
 #define SUPABASE_URL  "https://kgamvzlehrnvpwwnjamp.supabase.co"
 #define SUPABASE_ANON "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtnYW12emxlaHJudnB3d25qYW1wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExNzU2NzksImV4cCI6MjA5Njc1MTY3OX0.IEdSi4pbFNi2RlG468apJDxD8p0Rbf5zJyHhv1IRxJM"
 
-#define FW_VERSION        "calmband-2.2"
+#define FW_VERSION        "calmband-2.3"
 #define SEND_INTERVAL_MS  2000        // envío cada 2 s (antes 4 s) → menos delay en el dashboard
 #define REOPEN_PORTAL_MS  120000  // sin WiFi este tiempo y con el AP cerrado → reabrir portal
 #define BOOT_BUTTON       0       // GPIO0 = botón BOOT en casi todas las placas ESP32
@@ -121,23 +125,48 @@ int hrvFromRR() {                                    // RMSSD sobre RR consecuti
 
 unsigned long lastSend = 0;
 
-// ── Offline ring buffer (lecturas capturadas sin WiFi) ───────────────────────
-// 400 lecturas × 8 s/lectura ≈ 53 minutos de autonomía sin conexión.
-#define BUF_SIZE 400
+// ── Offline buffer PERSISTENTE en flash (LittleFS) ───────────────────────────
+// Cada lectura sin WiFi se guarda como un registro binario fijo en /offline.dat.
+// A diferencia de un buffer en RAM, esto sobrevive reinicios y cortes de batería.
+// Tope ~200 KB ≈ 20.000 lecturas → muchas horas/días de autonomía sin conexión.
+#define OFFLINE_FILE       "/offline.dat"
+#define OFFLINE_MAX_BYTES  200000UL     // protege la flash de crecer sin límite
 
-struct OfflineReading {
-  unsigned long capturedAt;   // millis() en el momento de la lectura
-  int16_t bpm, hrv, calma;   // int16_t alcanza para todos los valores posibles
-};
-OfflineReading offBuf[BUF_SIZE];
-int offHead  = 0;             // próxima posición de escritura
-int offCount = 0;             // lecturas almacenadas actualmente
+struct __attribute__((packed)) StoredReading {
+  uint32_t epoch;             // hora Unix de la lectura (0 = desconocida → server usa now())
+  int16_t  bpm, hrv, calma;   // int16_t alcanza para todos los valores posibles
+};                            // 10 bytes por registro
 
+bool     fsOk     = false;    // LittleFS montado correctamente
+uint32_t flushPos = 0;        // byte del próximo registro a enviar durante el vaciado
+
+// Lecturas pendientes de envío en el archivo (= registros sin enviar).
+long offPending() {
+  if (!fsOk || !LittleFS.exists(OFFLINE_FILE)) return 0;
+  File f = LittleFS.open(OFFLINE_FILE, FILE_READ);
+  if (!f) return 0;
+  long bytes = (long)f.size() - (long)flushPos;
+  f.close();
+  return bytes > 0 ? bytes / (long)sizeof(StoredReading) : 0;
+}
+
+// Guarda una lectura offline al final del archivo. Usa la hora del sistema si ya
+// se sincronizó NTP alguna vez en este encendido; si no, epoch=0 (server pone now()).
 void offPush(int bpm, int hrv, int calma) {
-  offBuf[offHead] = { millis(), (int16_t)bpm, (int16_t)hrv, (int16_t)calma };
-  offHead = (offHead + 1) % BUF_SIZE;
-  if (offCount < BUF_SIZE) offCount++;
-  // Si el buffer está lleno, offHead avanzó sobre la lectura más antigua (ring).
+  if (!fsOk) { Serial.println("[Buffer] LittleFS no disponible — lectura descartada"); return; }
+  File f = LittleFS.open(OFFLINE_FILE, FILE_APPEND);
+  if (!f) { Serial.println("[Buffer] No se pudo abrir el archivo offline"); return; }
+  if (f.size() >= OFFLINE_MAX_BYTES) {
+    f.close();
+    Serial.println("[Buffer] Archivo offline lleno — descarto lectura nueva (conservo el histórico)");
+    return;
+  }
+  time_t now = time(nullptr);
+  StoredReading r;
+  r.epoch = (now > 1000000000UL) ? (uint32_t)now : 0;
+  r.bpm = (int16_t)bpm; r.hrv = (int16_t)hrv; r.calma = (int16_t)calma;
+  f.write((uint8_t*)&r, sizeof(r));
+  f.close();
 }
 
 // ── NTP ───────────────────────────────────────────────────────────────────────
@@ -222,32 +251,49 @@ void sendReading(int bpm, int hrv, int calma, const char* isoTs = nullptr) {
   if (code > 0) blinkActivity();
 }
 
-// Envía hasta 3 lecturas guardadas en offBuf con sus timestamps reales (NTP) por ciclo para no bloquear.
+// Envía hasta 3 lecturas guardadas en /offline.dat por ciclo (para no bloquear el loop).
+// Cada registro lleva su propio epoch: si es válido se manda como timestamp ISO real,
+// si es 0 se manda sin timestamp y Supabase usa now(). Al vaciar el archivo, se borra.
 void flushBuffer() {
-  if (offCount == 0) return;
-  int tail = (offHead - offCount + BUF_SIZE) % BUF_SIZE;
+  if (!fsOk || WiFi.status() != WL_CONNECTED || !LittleFS.exists(OFFLINE_FILE)) return;
+
+  File f = LittleFS.open(OFFLINE_FILE, FILE_READ);
+  if (!f) return;
+  uint32_t total = f.size();
+  if (flushPos >= total) {                 // ya estaba todo enviado
+    f.close();
+    LittleFS.remove(OFFLINE_FILE);
+    flushPos = 0;
+    Serial.println("[Buffer] Buffer offline vaciado completamente — archivo borrado.");
+    return;
+  }
+
+  f.seek(flushPos);
   int sent_this_cycle = 0;
-  while (offCount > 0 && WiFi.status() == WL_CONNECTED && sent_this_cycle < 3) {
-    OfflineReading& r = offBuf[tail];
+  StoredReading r;
+  while (sent_this_cycle < 3 && WiFi.status() == WL_CONNECTED &&
+         f.read((uint8_t*)&r, sizeof(r)) == sizeof(r)) {
     char ts[25] = {0};
-    if (ntpSynced) {
-      // Calcula el epoch real de la lectura a partir del offset desde la sync NTP.
-      long msAgo = (long)(ntpMs - r.capturedAt);
-      time_t readingEpoch = ntpEpoch - msAgo / 1000;
+    if (r.epoch > 1000000000UL) {
+      time_t readingEpoch = (time_t)r.epoch;
       struct tm t;
       gmtime_r(&readingEpoch, &t);
       strftime(ts, sizeof(ts), "%Y-%m-%dT%H:%M:%SZ", &t);
     }
-    sendReading(r.bpm, r.hrv, r.calma, ntpSynced ? ts : nullptr);
-    tail = (tail + 1) % BUF_SIZE;
-    offCount--;
+    sendReading(r.bpm, r.hrv, r.calma, r.epoch > 1000000000UL ? ts : nullptr);
+    flushPos += sizeof(r);
     sent_this_cycle++;
     delay(50);   // pausa muy breve
   }
-  if (offCount > 0) {
-    Serial.printf("[Buffer] Quedan %d lecturas offline por enviar…\n", offCount);
+  f.close();
+
+  long remaining = (total > flushPos) ? (total - flushPos) / (long)sizeof(StoredReading) : 0;
+  if (remaining > 0) {
+    Serial.printf("[Buffer] Quedan %ld lecturas offline por enviar…\n", remaining);
   } else {
-    Serial.println("[Buffer] Buffer vaciado completamente.");
+    LittleFS.remove(OFFLINE_FILE);
+    flushPos = 0;
+    Serial.println("[Buffer] Buffer offline vaciado completamente — archivo borrado.");
   }
 }
 
@@ -481,6 +527,16 @@ void setup() {
   initSensor();
 
   prefs.begin("calmband", false);
+
+  // Buffer offline persistente: montar LittleFS (formatea si es el primer arranque).
+  fsOk = LittleFS.begin(true);
+  if (fsOk) {
+    long pend = offPending();
+    Serial.printf("[FS] LittleFS montado. Lecturas offline pendientes de envío: %ld\n", pend);
+  } else {
+    Serial.println("[FS] LittleFS NO montó — el buffer offline queda deshabilitado.");
+  }
+
   WiFi.setAutoReconnect(true);
 
   // Intento con la red guardada (espera breve con LED parpadeando).
@@ -558,11 +614,10 @@ void loop() {
     // No hacemos return: el sensor sigue leyendo y las métricas van al buffer.
   } else {
     disconnectedSince = 0;
-    // Transición offline → online: sincronizar NTP y vaciar el buffer acumulado.
-    if (!prevWifiOk) {
-      if (!ntpSynced) syncNTP();
-      if (offCount > 0) flushBuffer();
-    }
+    // Transición offline → online: sincronizar NTP para poder fechar lo acumulado.
+    if (!prevWifiOk && !ntpSynced) syncNTP();
+    // Con WiFi y datos pendientes en flash: vaciar de a 3 por ciclo hasta terminar.
+    if (offPending() > 0) flushBuffer();
   }
   prevWifiOk = wifiOk;
 
@@ -620,8 +675,8 @@ void loop() {
       sendReading(bpm, hrv, calma);
     } else {
       offPush(bpm, hrv, calma);
-      Serial.printf("[Buffer] +1 offline — bpm=%d hrv=%d calma=%d  cola=%d/%d\n",
-                    bpm, hrv, calma, offCount, BUF_SIZE);
+      Serial.printf("[Buffer] +1 offline (flash) — bpm=%d hrv=%d calma=%d  pendientes=%ld\n",
+                    bpm, hrv, calma, offPending());
     }
   }
 }
