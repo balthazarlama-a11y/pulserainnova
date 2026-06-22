@@ -42,8 +42,8 @@
 #define SUPABASE_URL  "https://kgamvzlehrnvpwwnjamp.supabase.co"
 #define SUPABASE_ANON "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtnYW12emxlaHJudnB3d25qYW1wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExNzU2NzksImV4cCI6MjA5Njc1MTY3OX0.IEdSi4pbFNi2RlG468apJDxD8p0Rbf5zJyHhv1IRxJM"
 
-#define FW_VERSION        "calmband-2.1"
-#define SEND_INTERVAL_MS  4000
+#define FW_VERSION        "calmband-2.2"
+#define SEND_INTERVAL_MS  2000        // envío cada 2 s (antes 4 s) → menos delay en el dashboard
 #define REOPEN_PORTAL_MS  120000  // sin WiFi este tiempo y con el AP cerrado → reabrir portal
 #define BOOT_BUTTON       0       // GPIO0 = botón BOOT en casi todas las placas ESP32
 #define STATUS_LED        2       // LED integrado (GPIO2) en la mayoría de placas ESP32
@@ -86,9 +86,9 @@ void celebrateConnected() {
 #define IR_FINGER_THRESHOLD 50000     // IR por debajo = no hay dedo
 #define RR_MIN_MS           333       // 180 bpm
 #define RR_MAX_MS           1500      // 40 bpm
-#define MIN_BEATS_TO_SEND   5         // latidos válidos antes de enviar (calentar)
+#define MIN_BEATS_TO_SEND   3         // latidos válidos antes de enviar (antes 5 → arranca más rápido)
 
-const byte RR_SIZE = 10;
+const byte RR_SIZE = 6;               // media móvil de 6 latidos (antes 10) → bpm reacciona más rápido
 long rr[RR_SIZE];                     // últimos intervalos RR, en orden cronológico
 byte rrCount = 0;
 long lastBeat = 0;
