@@ -10,7 +10,7 @@ import {
   IconSparkles, IconWind, IconGamepad, IconMusic, IconBook, IconHeart,
   IconChevronRight, IconActivity, IconSun, IconWatch,
   IconCalendar, IconWifi, IconWifiOff, IconRefresh, IconX, IconAlertTriangle,
-  IconUser, IconChevronDown, IconClock,
+  IconUser, IconChevronDown, IconClock, IconMenu,
 } from "@/components/marketing/icons";
 import { useAuth } from "@/hooks/useAuth";
 import { usePeople } from "@/lib/peopleContext";
