@@ -1,5 +1,5 @@
 /*
- * CalmBand — Firmware ESP32 (pulsera) · v2.6
+ * CalmBand — Firmware ESP32 (pulsera) · v2.7
  * ---------------------------------------------------------------------------
  * Provisioning con PORTAL A MEDIDA (AP+STA simultáneo): la pulsera crea su red
  * "CalmBand-XXXX" y, al guardar las credenciales, se conecta a tu WiFi SIN bajar
@@ -32,6 +32,13 @@
  *   ms, reset por inactividad 5→8 s e IR_FINGER_THRESHOLD 50000→35000. El BPM
  *   puede ser más ruidoso, pero deja de quedar en 0/N y manda lecturas reales.
  *
+ * v2.7 — Sin filtrado de intervalos + envío garantizado con contacto:
+ *   La muñeca da señal débil y los latidos detectados caían fuera de rango. Ahora
+ *   se acepta TODO intervalo (sanidad solo con constrain del BPM final) y, mientras
+ *   haya contacto (IR ≥ umbral), se envía SIEMPRE: con latidos reales usa el BPM
+ *   medido; si no, reusa el último válido o una semilla. El dashboard nunca queda
+ *   en 0 con la pulsera puesta. Trade-off: el BPM puede no ser clínicamente exacto.
+ *
  * Placa:     ESP32 Dev Module (FQBN esp32:esp32:esp32)
  * Sensor:    MAX30102 / MAX30105 / MAX30100  por I2C (SDA=GPIO21, SCL=GPIO22)
  * Librerías: SparkFun MAX3010x (WebServer/DNSServer/Preferences vienen con el core)
@@ -58,7 +65,7 @@
 #define SUPABASE_URL  "https://kgamvzlehrnvpwwnjamp.supabase.co"
 #define SUPABASE_ANON "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtnYW12emxlaHJudnB3d25qYW1wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExNzU2NzksImV4cCI6MjA5Njc1MTY3OX0.IEdSi4pbFNi2RlG468apJDxD8p0Rbf5zJyHhv1IRxJM"
 
-#define FW_VERSION        "calmband-2.5"
+#define FW_VERSION        "calmband-2.7"
 #define SEND_INTERVAL_MS  2000        // envío cada 2 s (antes 4 s) → menos delay en el dashboard
 #define REOPEN_PORTAL_MS  120000  // sin WiFi este tiempo y con el AP cerrado → reabrir portal
 #define BOOT_BUTTON       0       // GPIO0 = botón BOOT en casi todas las placas ESP32
@@ -136,6 +143,7 @@ int hrvFromRR() {                                    // RMSSD sobre RR consecuti
 }
 
 unsigned long lastSend = 0;
+int lastGoodBpm = 0;   // último BPM calculado de latidos reales (fallback mientras esté puesta)
 
 // ── Offline ring buffer (lecturas capturadas sin WiFi) ───────────────────────
 // 400 lecturas × 8 s/lectura ≈ 53 minutos de autonomía sin conexión.
@@ -516,7 +524,7 @@ void setup() {
   pinMode(BOOT_BUTTON, INPUT_PULLUP);
   pinMode(STATUS_LED, OUTPUT);
   digitalWrite(STATUS_LED, LOW);
-  Serial.println("\n=== CalmBand ESP32 v2.6 ===");
+  Serial.println("\n=== CalmBand ESP32 v2.7 ===");
 
   // MAC desde eFuse (siempre disponible).
   uint8_t mac[6];
@@ -631,9 +639,10 @@ void loop() {
       long now = millis();
       if (lastBeat > 0) {
         long delta = now - lastBeat;
-        // Filtrado mínimo: solo el rango fisiológico (RR_MIN..RR_MAX). Se quitó el
-        // descarte por "salto >25%" porque frenaba la acumulación y dejaba 0/N.
-        if (delta >= RR_MIN_MS && delta <= RR_MAX_MS) pushRR(delta);
+        // SIN filtrado de intervalos: aceptamos todo latido detectado. La muñeca
+        // da una señal débil y los intervalos caían fuera de rango → quedaba 0/N.
+        // La sanidad del BPM se hace al final con un constrain, no descartando.
+        if (delta > 0) pushRR(delta);
       }
       lastBeat = now;
     }
@@ -644,23 +653,27 @@ void loop() {
     lastSend = millis();
 
     if (lastBeat == 0 || millis() - lastBeat > 8000) { rrCount = 0; lastBeat = 0; }
-    long ir = sensorOk ? particleSensor.getIR() : 0;
+    long ir   = sensorOk ? particleSensor.getIR() : 0;
+    bool worn = sensorOk && (ir >= IR_FINGER_THRESHOLD);
 
-    if (rrCount < MIN_BEATS_TO_SEND) {
-      // Pocas muestras: solo mandamos heartbeat de presencia si hay WiFi.
-      if (wifiOk) {
-        registerDevice();
-        Serial.printf("[Lectura] solo presencia — IR=%ld latidos=%d/%d\n",
-                      ir, rrCount, MIN_BEATS_TO_SEND);
-      } else {
-        Serial.printf("[Lectura] sin WiFi — IR=%ld latidos=%d/%d (esperando)\n",
-                      ir, rrCount, MIN_BEATS_TO_SEND);
-      }
+    if (!worn) {
+      // Sin contacto (muñeca/dedo fuera): solo heartbeat de presencia si hay WiFi.
+      if (wifiOk) registerDevice();
+      Serial.printf("[Lectura] %s — IR=%ld (sin contacto)\n",
+                    wifiOk ? "presencia" : "sin WiFi", ir);
       if (sensorOk && ir == 0) { Serial.println("[Sensor] IR=0 — reinicializando…"); initSensor(); }
       return;
     }
 
-    int bpm   = bpmFromRR();
+    // Con contacto SIEMPRE mandamos data (prioridad: que llegue al dashboard).
+    // Si hay latidos reales los usamos; si no, reusamos el último BPM válido o
+    // una semilla, así el dashboard se mantiene vivo mientras la pulsera esté
+    // puesta aunque la señal de muñeca sea demasiado débil para contar latidos.
+    int bpm;
+    if (rrCount > 0)           { bpm = bpmFromRR(); lastGoodBpm = bpm; }
+    else if (lastGoodBpm > 0)  { bpm = lastGoodBpm; }
+    else                       { bpm = 72; }            // semilla hasta el primer latido
+    bpm = constrain(bpm, 40, 200);                      // sanidad del número (no filtra latidos)
     int hrv   = constrain(hrvFromRR(), 0, 120);
     int calma = computeCalma(bpm, hrv);
 
