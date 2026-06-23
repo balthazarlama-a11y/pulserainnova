@@ -1,5 +1,5 @@
 /*
- * CalmBand — Firmware ESP32 (pulsera) · v2.5
+ * CalmBand — Firmware ESP32 (pulsera) · v2.6
  * ---------------------------------------------------------------------------
  * Provisioning con PORTAL A MEDIDA (AP+STA simultáneo): la pulsera crea su red
  * "CalmBand-XXXX" y, al guardar las credenciales, se conecta a tu WiFi SIN bajar
@@ -26,6 +26,11 @@
  *   el SoftAP salta de canal y se vuelve invisible. Ahora, con el portal abierto,
  *   el STA queda en reposo (setAutoReconnect(false) + sin reintento de la red
  *   guardada): el AP queda fijo y visible. La reconexión la dispara /save.
+ *
+ * v2.6 — Filtrado de latidos más permisivo (priorizar que llegue data):
+ *   MIN_BEATS_TO_SEND 3→1, se quita el descarte por salto >25%, RR_MAX 1500→2000
+ *   ms, reset por inactividad 5→8 s e IR_FINGER_THRESHOLD 50000→35000. El BPM
+ *   puede ser más ruidoso, pero deja de quedar en 0/N y manda lecturas reales.
  *
  * Placa:     ESP32 Dev Module (FQBN esp32:esp32:esp32)
  * Sensor:    MAX30102 / MAX30105 / MAX30100  por I2C (SDA=GPIO21, SCL=GPIO22)
@@ -94,10 +99,10 @@ void celebrateConnected() {
 }
 
 // ── Cálculo de pulso a partir de intervalos RR (ms) ──
-#define IR_FINGER_THRESHOLD 50000     // IR por debajo = no hay dedo
+#define IR_FINGER_THRESHOLD 35000     // IR por debajo = no hay dedo (bajado: sin dedo lee ~22000)
 #define RR_MIN_MS           333       // 180 bpm
-#define RR_MAX_MS           1500      // 40 bpm
-#define MIN_BEATS_TO_SEND   3         // latidos válidos antes de enviar (antes 5 → arranca más rápido)
+#define RR_MAX_MS           2000      // 30 bpm (ampliado: acepta detecciones más lentas)
+#define MIN_BEATS_TO_SEND   1         // priorizamos que llegue data: manda con 1 intervalo válido
 
 const byte RR_SIZE = 6;               // media móvil de 6 latidos (antes 10) → bpm reacciona más rápido
 long rr[RR_SIZE];                     // últimos intervalos RR, en orden cronológico
@@ -511,7 +516,7 @@ void setup() {
   pinMode(BOOT_BUTTON, INPUT_PULLUP);
   pinMode(STATUS_LED, OUTPUT);
   digitalWrite(STATUS_LED, LOW);
-  Serial.println("\n=== CalmBand ESP32 v2.5 ===");
+  Serial.println("\n=== CalmBand ESP32 v2.6 ===");
 
   // MAC desde eFuse (siempre disponible).
   uint8_t mac[6];
@@ -626,14 +631,9 @@ void loop() {
       long now = millis();
       if (lastBeat > 0) {
         long delta = now - lastBeat;
-        bool plausible = (delta >= RR_MIN_MS && delta <= RR_MAX_MS);
-        if (plausible && rrCount >= 3) {
-          long avg = 0;
-          for (byte i = 0; i < rrCount; i++) avg += rr[i];
-          avg /= rrCount;
-          if (labs(delta - avg) > avg / 4) plausible = false;   // descartar saltos >25%
-        }
-        if (plausible) pushRR(delta);
+        // Filtrado mínimo: solo el rango fisiológico (RR_MIN..RR_MAX). Se quitó el
+        // descarte por "salto >25%" porque frenaba la acumulación y dejaba 0/N.
+        if (delta >= RR_MIN_MS && delta <= RR_MAX_MS) pushRR(delta);
       }
       lastBeat = now;
     }
@@ -643,7 +643,7 @@ void loop() {
   if (millis() - lastSend >= SEND_INTERVAL_MS) {
     lastSend = millis();
 
-    if (lastBeat == 0 || millis() - lastBeat > 5000) { rrCount = 0; lastBeat = 0; }
+    if (lastBeat == 0 || millis() - lastBeat > 8000) { rrCount = 0; lastBeat = 0; }
     long ir = sensorOk ? particleSensor.getIR() : 0;
 
     if (rrCount < MIN_BEATS_TO_SEND) {
