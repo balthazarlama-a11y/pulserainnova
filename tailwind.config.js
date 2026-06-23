@@ -39,6 +39,7 @@ module.exports = {
       animation: {
         "fade-in": "fadeIn 0.3s ease-out forwards",
         "slide-up": "slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+        "slide-in-right": "slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards",
         "dot-pulse": "dotPulse 1.8s ease-in-out infinite"
       },
       keyframes: {
@@ -49,6 +50,10 @@ module.exports = {
         slideUp: {
           "0%": { opacity: "0", transform: "translateY(16px)" },
           "100%": { opacity: "1", transform: "translateY(0)" }
+        },
+        slideInRight: {
+          "0%": { transform: "translateX(100%)" },
+          "100%": { transform: "translateX(0)" }
         },
         dotPulse: {
           "0%, 100%": { boxShadow: "0 0 0 0 currentColor" },

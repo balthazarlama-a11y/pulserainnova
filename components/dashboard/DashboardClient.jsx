@@ -641,6 +641,93 @@ const Sidebar = ({ navItems, parentName, parentEmail, onSignOut }) => {
   );
 };
 
+// ─── Navegación móvil (hamburguesa) ─────────────────────────────────────────────
+// El Sidebar es `hidden lg:flex`, así que en pantallas < 1024px no hay navegación.
+// Este componente añade una barra superior con botón ≡ y un drawer lateral que
+// expone las mismas secciones, perfil y cierre de sesión.
+const MobileNav = ({ navItems, parentName, parentEmail, onSignOut }) => {
+  const [open, setOpen] = useState(false);
+  const initial = (parentName?.[0] || "?").toUpperCase();
+
+  // Bloquear el scroll del fondo mientras el drawer está abierto.
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onEsc = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("keydown", onEsc);
+    return () => {
+      document.body.style.overflow = prev;
+      document.removeEventListener("keydown", onEsc);
+    };
+  }, [open]);
+
+  return (
+    <>
+      <header className="lg:hidden sticky top-0 z-40 flex items-center justify-between px-4 h-14 border-b border-line"
+        style={{ background: "var(--bg-elevated)" }}>
+        <Link href="/dashboard" className="flex items-center gap-2 no-underline">
+          <div className="w-8 h-8 rounded-xl shrink-0" style={{ background: "linear-gradient(135deg, #2A9D8F, #6FD0C4)" }}/>
+          <span className="font-bold text-[15px] tracking-tight text-ink">CalmBand</span>
+        </Link>
+        <button onClick={() => setOpen(true)} aria-label="Abrir menú" aria-haspopup="menu" aria-expanded={open}
+          className="w-10 h-10 flex items-center justify-center rounded-xl text-ink hover:bg-surface transition-colors cursor-pointer">
+          <IconMenu size={22}/>
+        </button>
+      </header>
+
+      {open && typeof document !== "undefined" && createPortal(
+        <div className="lg:hidden fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label="Menú de navegación">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={() => setOpen(false)} aria-hidden="true"/>
+          <aside className="absolute right-0 top-0 bottom-0 w-[78%] max-w-[300px] flex flex-col py-5 px-4 border-l border-line shadow-2xl animate-slide-in-right"
+            style={{ background: "var(--bg-elevated)" }}>
+            <div className="flex items-center justify-between mb-6 h-9">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl shrink-0" style={{ background: "linear-gradient(135deg, #2A9D8F, #6FD0C4)" }}/>
+                <span className="font-bold text-[15px] tracking-tight text-ink">CalmBand</span>
+              </div>
+              <button onClick={() => setOpen(false)} aria-label="Cerrar menú"
+                className="w-9 h-9 flex items-center justify-center rounded-xl text-ink-dim hover:bg-surface hover:text-ink transition-colors cursor-pointer">
+                <IconX size={18}/>
+              </button>
+            </div>
+
+            <nav className="flex flex-col gap-1 flex-1" aria-label="Navegación principal">
+              {navItems.map((x, k) => (
+                <Link key={k} href={x.href} onClick={() => setOpen(false)} aria-current={x.active ? "page" : undefined}
+                  className={`flex items-center gap-3 h-12 px-3 rounded-xl transition-colors no-underline ${
+                    x.active ? "bg-brand/12 border border-brand/25 text-brand"
+                      : "bg-transparent border border-transparent text-ink-dim hover:bg-surface hover:text-ink"}`}>
+                  <span className="shrink-0 flex items-center justify-center w-[22px]">{x.i}</span>
+                  <span className="text-[15px] font-medium">{x.label}</span>
+                </Link>
+              ))}
+            </nav>
+
+            <div className="mt-3 pt-4 border-t border-line">
+              <Link href="/settings" onClick={() => setOpen(false)}
+                className="flex items-center gap-3 mb-1 px-3 py-2.5 rounded-xl no-underline hover:bg-surface transition-colors">
+                <span className="w-9 h-9 rounded-full shrink-0 flex items-center justify-center font-semibold text-sm text-ink-on-accent"
+                  style={{ background: "linear-gradient(135deg, #2A9D8F, #6FD0C4)" }}>{initial}</span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[13px] font-semibold text-ink truncate">{parentName}</span>
+                  <span className="block text-[11px] text-ink-dim truncate">{parentEmail}</span>
+                </span>
+              </Link>
+              <button onClick={() => { setOpen(false); onSignOut(); }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[15px] font-medium cursor-pointer hover:bg-surface transition-colors"
+                style={{ color: SEMANTIC_COLORS.danger }}>
+                <IconLogOut size={18}/> Cerrar sesión
+              </button>
+            </div>
+          </aside>
+        </div>,
+        document.body
+      )}
+    </>
+  );
+};
+
 const NAV_ITEMS = (active) => [
   { i: <IconHome size={18}/>,     active: active === "dashboard", label: "Dashboard", href: "/dashboard" },
   { i: <IconHeart size={18}/>,    active: active === "kids",      label: "Vista persona", href: "/kids" },
@@ -828,6 +915,7 @@ export default function DashboardClient({ user, profile }) {
     return (
       <div className="min-h-screen text-ink relative overflow-hidden bg-bg">
         <Sidebar navItems={NAV_ITEMS("dashboard")} parentName={parentName} parentEmail={parentEmail} onSignOut={handleSignOut}/>
+        <MobileNav navItems={NAV_ITEMS("dashboard")} parentName={parentName} parentEmail={parentEmail} onSignOut={handleSignOut}/>
         <main className="dashboard-main relative z-[2] max-w-[1440px] px-4 sm:px-6 md:px-8 lg:px-10 lg:ml-[72px] py-6 sm:py-8 lg:py-10 pb-24">
           <div className="flex flex-col gap-2 mb-10">
             <CardLabel className="tracking-[0.22em]">{greeting} · {parentName}</CardLabel>
@@ -862,6 +950,7 @@ export default function DashboardClient({ user, profile }) {
   return (
     <div className="min-h-screen text-ink relative overflow-hidden bg-bg">
       <Sidebar navItems={NAV_ITEMS("dashboard")} parentName={parentName} parentEmail={parentEmail} onSignOut={handleSignOut}/>
+      <MobileNav navItems={NAV_ITEMS("dashboard")} parentName={parentName} parentEmail={parentEmail} onSignOut={handleSignOut}/>
 
       <main className="dashboard-main relative z-[2] max-w-[1440px] px-4 sm:px-6 md:px-8 lg:px-10 lg:ml-[72px] py-6 sm:py-8 lg:py-10 pb-24">
 
