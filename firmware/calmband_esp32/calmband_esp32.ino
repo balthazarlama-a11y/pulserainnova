@@ -1,5 +1,5 @@
 /*
- * CalmBand — Firmware ESP32 (pulsera) · v2.1
+ * CalmBand — Firmware ESP32 (pulsera) · v2.4
  * ---------------------------------------------------------------------------
  * Provisioning con PORTAL A MEDIDA (AP+STA simultáneo): la pulsera crea su red
  * "CalmBand-XXXX" y, al guardar las credenciales, se conecta a tu WiFi SIN bajar
@@ -15,6 +15,11 @@
  *   El sensor toma datos SIEMPRE, esté o no conectado a WiFi.
  *   Las lecturas sin conexión se guardan en un buffer circular (BUF_SIZE × 8s).
  *   Al reconectar se sincronizan por NTP y se envían con timestamps reales.
+ *
+ * v2.4 — Escaneo de redes robusto en el portal:
+ *   Antes el portal mostraba "no se vieron redes" porque el intento de conexión
+ *   STA a la red guardada mantenía la radio ocupada. Ahora /scan libera la radio
+ *   (disconnect si no está conectado), reintenta el barrido y omite duplicados.
  *
  * Placa:     ESP32 Dev Module (FQBN esp32:esp32:esp32)
  * Sensor:    MAX30102 / MAX30105 / MAX30100  por I2C (SDA=GPIO21, SCL=GPIO22)
@@ -42,7 +47,7 @@
 #define SUPABASE_URL  "https://kgamvzlehrnvpwwnjamp.supabase.co"
 #define SUPABASE_ANON "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtnYW12emxlaHJudnB3d25qYW1wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExNzU2NzksImV4cCI6MjA5Njc1MTY3OX0.IEdSi4pbFNi2RlG468apJDxD8p0Rbf5zJyHhv1IRxJM"
 
-#define FW_VERSION        "calmband-2.2"
+#define FW_VERSION        "calmband-2.4"
 #define SEND_INTERVAL_MS  2000        // envío cada 2 s (antes 4 s) → menos delay en el dashboard
 #define REOPEN_PORTAL_MS  120000  // sin WiFi este tiempo y con el AP cerrado → reabrir portal
 #define BOOT_BUTTON       0       // GPIO0 = botón BOOT en casi todas las placas ESP32
@@ -255,9 +260,16 @@ void initSensor() {
   sensorOk = particleSensor.begin(Wire, I2C_SPEED_STANDARD);   // 100 kHz
   if (sensorOk) {
     Serial.println("[Sensor] MAX3010x OK");
-    particleSensor.setup();
-    particleSensor.setPulseAmplitudeRed(0x0A);
-    particleSensor.setPulseAmplitudeGreen(0);
+    // Config explícita para MAX30102 (2 LEDs: Red + IR, sin verde). CLAVE: hay que
+    // encender el LED INFRARROJO, que es el que se usa para detectar el dedo
+    // (getIR()). El setup() por defecto usa ledMode=3 (incluye un verde inexistente)
+    // y no fija la amplitud del IR → lecturas basura tipo IR=448.
+    // setup(powerLevel, sampleAverage, ledMode, sampleRate, pulseWidth, adcRange)
+    particleSensor.setup(0x1F, 4, 2, 400, 411, 16384);
+    particleSensor.setPulseAmplitudeRed(0x0A);   // rojo bajo (no se usa para el pulso)
+    particleSensor.setPulseAmplitudeIR(0x24);    // IR fuerte → señal de dedo robusta
+    particleSensor.setPulseAmplitudeGreen(0);    // el MAX30102 no tiene verde
+    particleSensor.clearFIFO();
   } else {
     Serial.println("[Sensor] MAX3010x NO detectado (revisa cableado I2C). Sigo igual.");
   }
@@ -349,11 +361,34 @@ void handleRoot()   { server.send_P(200, "text/html", PORTAL_PAGE); }
 void handleInfo()   { server.send(200, "application/json", "{\"mac\":\"" + deviceMac + "\"}"); }
 
 void handleScan() {
-  int n = WiFi.scanNetworks();
+  // En modo portal (AP+STA) suele haber un intento de conexión STA en curso
+  // (p. ej. a una red guardada que ya no existe) que mantiene la radio ocupada
+  // y hace que WiFi.scanNetworks() devuelva 0 → "no se vieron redes". Si NO
+  // estamos conectados, abortamos ese intento para liberar la radio, y luego
+  // escaneamos de forma síncrona reintentando si el primer barrido falla.
+  if (WiFi.status() != WL_CONNECTED) {
+    WiFi.disconnect();   // no borra credenciales; solo corta el intento en curso
+    delay(120);
+  }
+  int n = WiFi.scanNetworks(false /*async*/, true /*incluir ocultas*/);
+  for (int tries = 0; n <= 0 && tries < 3; tries++) {
+    WiFi.scanDelete();
+    delay(300);
+    n = WiFi.scanNetworks(false, true);
+  }
+
+  // Construir JSON sin SSIDs vacíos y sin duplicados (2.4/5 GHz con mismo nombre).
   String j = "[";
-  for (int i = 0; i < n; i++) { if (i) j += ","; j += "\"" + jsonEscape(WiFi.SSID(i)) + "\""; }
+  for (int i = 0; i < n; i++) {
+    String s = WiFi.SSID(i);
+    if (s.length() == 0) continue;                 // red oculta sin nombre
+    if (j.indexOf("\"" + jsonEscape(s) + "\"") >= 0) continue;  // ya está
+    if (j.length() > 1) j += ",";
+    j += "\"" + jsonEscape(s) + "\"";
+  }
   j += "]";
   WiFi.scanDelete();
+  Serial.printf("[Portal] scan -> %d redes encontradas\n", n);
   server.send(200, "application/json", j);
 }
 
@@ -464,7 +499,7 @@ void setup() {
   pinMode(BOOT_BUTTON, INPUT_PULLUP);
   pinMode(STATUS_LED, OUTPUT);
   digitalWrite(STATUS_LED, LOW);
-  Serial.println("\n=== CalmBand ESP32 v2.1 ===");
+  Serial.println("\n=== CalmBand ESP32 v2.4 ===");
 
   // MAC desde eFuse (siempre disponible).
   uint8_t mac[6];

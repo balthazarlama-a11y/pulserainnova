@@ -1,30 +1,29 @@
-# Actualizar firmware del ESP32 (CalmBand) — v2.1 → v2.2
+# Actualizar firmware del ESP32 (CalmBand) — v2.4
 
-Hola 👋 Gracias por ayudar a flashear la pulsera. Este cambio hace que la pulsera
-**envíe las lecturas más seguido (cada 2 s en vez de 4 s)** y que el pulso reaccione
-más rápido, para que el dashboard se actualice con menos delay.
+Hola 👋 Gracias por ayudar a flashear la pulsera. El firmware **v2.4** arregla el
+escaneo de redes del portal de configuración: antes el portal podía mostrar
+**"no se vieron redes"** y ahora lista todas las redes 2.4 GHz disponibles para
+que elijas a cuál conectarte.
 
 El cambio NO viaja por WiFi: hay que subir el firmware **por el cable USB** (una sola vez).
 Toda la conexión WiFi de la pulsera es solo para mandar datos, no para actualizarse.
 
 ---
 
-## Qué cambió (solo 4 líneas)
+## Qué cambió en v2.4
 
-Si ya tenés el archivo `calmband_esp32.ino`, abrilo y cambiá **solo estas líneas**.
-Están todas arriba del archivo, en la zona de `#define`.
+- **Escaneo de redes robusto en el portal.** El portal levanta en modo AP+STA y,
+  si había una red guardada que ya no existe, la pulsera seguía intentando
+  conectarse a ella y eso dejaba la radio ocupada → el escaneo devolvía 0 redes.
+  Ahora `/scan` corta ese intento para liberar la radio, reintenta el barrido y
+  omite redes sin nombre y duplicados (mismo SSID en 2.4/5 GHz).
+- Incluye el fix de sensor de v2.3 (config explícita del LED infrarrojo del
+  MAX30102) y el buffer offline en RAM de v2.1 (~53 min sin conexión).
 
-| Buscá esta línea (ANTES)                          | Dejala así (DESPUÉS)                               |
-|---------------------------------------------------|---------------------------------------------------|
-| `#define FW_VERSION        "calmband-2.1"`        | `#define FW_VERSION        "calmband-2.2"`         |
-| `#define SEND_INTERVAL_MS  4000`                  | `#define SEND_INTERVAL_MS  2000`                   |
-| `#define MIN_BEATS_TO_SEND   5`                   | `#define MIN_BEATS_TO_SEND   3`                    |
-| `const byte RR_SIZE = 10;`                        | `const byte RR_SIZE = 6;`                          |
+> Si te pasaron el `.ino` ya actualizado, **no hace falta editar nada**: abrí ese
+> archivo directamente y andá al paso de flasheo.
 
-> Si te pasaron el `.ino` ya actualizado junto con este instructivo, **no hace falta
-> editar nada**: abrí ese archivo directamente y andá al paso de flasheo.
-
-No toques nada más (WiFi, claves, etc.): esas cosas no cambian.
+No toques las claves de Supabase ni el WiFi en el código: esas cosas no cambian.
 
 ---
 
@@ -45,7 +44,7 @@ No toques nada más (WiFi, claves, etc.): esas cosas no cambian.
 
 ## Cómo flashear — Opción B: arduino-cli (línea de comandos)
 
-Desde la carpeta que contiene `calmband_esp32/`:
+Desde la carpeta `firmware/` (la que contiene `calmband_esp32/`):
 
 ```bash
 # Compilar
@@ -66,15 +65,39 @@ Si la placa no es la genérica `esp32:esp32:esp32`, cambiá el `--fqbn`
 
 ---
 
+## Conectar la pulsera a tu WiFi (portal de configuración)
+
+Si la pulsera no tiene red guardada (o la guardada no está disponible), abre su
+propio portal:
+
+1. Desde el **celular**, conectate a la red WiFi **`CalmBand-XXXX`** (abierta, sin clave).
+2. Se abre solo el portal. Si no, entrá a `192.168.4.1`.
+3. La lista de redes se completa con las **2.4 GHz** que haya alrededor (el ESP32
+   no ve las de 5 GHz). Elegí la tuya y poné la clave.
+   - **Redes universitarias / eduroam:** completá el campo *Usuario*
+     (`usuario@universidad.edu`); la identidad anónima se autocompleta.
+4. Esperá el **"✅ ¡Conectada!"**. Ahí la pulsera empieza a registrarse en Supabase.
+
+Para **reconfigurar el WiFi** más adelante: mantené apretado **BOOT** ~3 s → borra
+la red guardada y reabre el portal.
+
+---
+
 ## Cómo confirmar que quedó bien ✅
 
 1. Abrí el **Monitor Serie** (Arduino IDE: lupa arriba a la derecha) a **115200 baudios**.
 2. Reiniciá la pulsera (botón EN/RST).
 3. Deberías ver:
-   - `firmware":"calmband-2.2"` cuando se registra → confirma que es la versión nueva.
-   - La línea `[Supabase] ingest 200 ... "ok"` apareciendo **cada ~2 segundos** (antes era cada 4).
+   - `=== CalmBand ESP32 v2.4 ===` al arrancar → confirma la versión nueva.
+   - `firmware":"calmband-2.4"` cuando se registra.
+   - Con WiFi conectado, la línea `[Supabase] ingest 200 ... "ok"` cada ~2 s.
+4. Para **pulso real**, poné el dedo firme sobre el sensor: el `IR` tiene que
+   saltar por arriba de **50000** (sin dedo queda en ~130, es normal) y empezar a
+   contar latidos.
 
-Si ves `calmband-2.2` y los `ingest ... "ok"` cada 2 s, ¡listo! 🎉
+> Si el dashboard sigue vacío aunque la pulsera esté conectada: está "pendiente" y
+> hay que **vincularla a una persona** desde la web (por su MAC). Sin vincular, la
+> ingesta responde `unassigned` y no guarda lecturas.
 
 ---
 
@@ -82,5 +105,7 @@ Si ves `calmband-2.2` y los `ingest ... "ok"` cada 2 s, ¡listo! 🎉
 
 - **No aparece el puerto COM** → instalar driver CH340.
 - **Error al subir / "Failed to connect"** → mantener BOOT apretado al iniciar la subida.
+- **El portal muestra "no se vieron redes"** → esto se arregló en v2.4; asegurate de
+  estar en esta versión (banner `v2.4` en el Monitor Serie).
 - **Compila pero el Monitor Serie sale ilegible** → poné 115200 baudios.
 - Cualquier otra cosa, mandale captura del Monitor Serie a Baltazar.
