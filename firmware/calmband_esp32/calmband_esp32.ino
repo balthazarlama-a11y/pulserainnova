@@ -1,5 +1,5 @@
 /*
- * CalmBand — Firmware ESP32 (pulsera) · v2.4
+ * CalmBand — Firmware ESP32 (pulsera) · v2.5
  * ---------------------------------------------------------------------------
  * Provisioning con PORTAL A MEDIDA (AP+STA simultáneo): la pulsera crea su red
  * "CalmBand-XXXX" y, al guardar las credenciales, se conecta a tu WiFi SIN bajar
@@ -20,6 +20,12 @@
  *   Antes el portal mostraba "no se vieron redes" porque el intento de conexión
  *   STA a la red guardada mantenía la radio ocupada. Ahora /scan libera la radio
  *   (disconnect si no está conectado), reintenta el barrido y omite duplicados.
+ *
+ * v2.5 — SoftAP estable (el portal "no emitía señal"):
+ *   En AP+STA la radio es una sola; si el STA reintenta una red en segundo plano
+ *   el SoftAP salta de canal y se vuelve invisible. Ahora, con el portal abierto,
+ *   el STA queda en reposo (setAutoReconnect(false) + sin reintento de la red
+ *   guardada): el AP queda fijo y visible. La reconexión la dispara /save.
  *
  * Placa:     ESP32 Dev Module (FQBN esp32:esp32:esp32)
  * Sensor:    MAX30102 / MAX30105 / MAX30100  por I2C (SDA=GPIO21, SCL=GPIO22)
@@ -47,7 +53,7 @@
 #define SUPABASE_URL  "https://kgamvzlehrnvpwwnjamp.supabase.co"
 #define SUPABASE_ANON "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtnYW12emxlaHJudnB3d25qYW1wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExNzU2NzksImV4cCI6MjA5Njc1MTY3OX0.IEdSi4pbFNi2RlG468apJDxD8p0Rbf5zJyHhv1IRxJM"
 
-#define FW_VERSION        "calmband-2.4"
+#define FW_VERSION        "calmband-2.5"
 #define SEND_INTERVAL_MS  2000        // envío cada 2 s (antes 4 s) → menos delay en el dashboard
 #define REOPEN_PORTAL_MS  120000  // sin WiFi este tiempo y con el AP cerrado → reabrir portal
 #define BOOT_BUTTON       0       // GPIO0 = botón BOOT en casi todas las placas ESP32
@@ -446,7 +452,13 @@ void handleStatus() {
 }
 
 void startAPPortal() {
+  // STA en reposo mientras el portal está abierto: en AP+STA la radio es una
+  // sola; si el STA escanea o reintenta una red (p. ej. una guardada que ya no
+  // existe) el SoftAP salta de canal y se vuelve invisible/inestable. Lo dejamos
+  // quieto → el AP queda fijo en un canal y visible para el celular.
+  WiFi.setAutoReconnect(false);
   WiFi.mode(WIFI_AP_STA);
+  WiFi.disconnect(false);          // corta cualquier intento STA en curso (sin apagar la radio)
   WiFi.softAP(apName().c_str());
   delay(120);
   dnsServer.start(53, "*", WiFi.softAPIP());
@@ -459,13 +471,13 @@ void startAPPortal() {
   server.onNotFound(handleRoot);   // portal cautivo: cualquier URL muestra la página
   server.begin();
   apActive = true;
+  connState = IDLE;
 
-  // Si había credenciales guardadas, seguimos intentándolas en segundo plano
-  // (si la red reaparece, conecta sola sin tocar el portal).
-  String s = prefs.getString("ssid", "");
-  if (s.length()) beginConnect(s, prefs.getString("user", ""), prefs.getString("anon", ""), prefs.getString("pass", ""));
+  // NO reintentamos la red guardada en segundo plano: en el arranque (setup) ya
+  // se probó durante 30 s, y reintentarla acá tira abajo el AP. La reconexión la
+  // dispara el usuario al guardar una red desde el portal (/save).
 
-  Serial.printf("[WiFi] Portal AP+STA abierto: \"%s\" (192.168.4.1). LED parpadeando.\n",
+  Serial.printf("[WiFi] Portal AP abierto: \"%s\" (192.168.4.1). LED parpadeando.\n",
                 apName().c_str());
 }
 
@@ -499,7 +511,7 @@ void setup() {
   pinMode(BOOT_BUTTON, INPUT_PULLUP);
   pinMode(STATUS_LED, OUTPUT);
   digitalWrite(STATUS_LED, LOW);
-  Serial.println("\n=== CalmBand ESP32 v2.4 ===");
+  Serial.println("\n=== CalmBand ESP32 v2.5 ===");
 
   // MAC desde eFuse (siempre disponible).
   uint8_t mac[6];
@@ -555,6 +567,7 @@ void loop() {
     if (WiFi.status() == WL_CONNECTED) {
       connState = CONNECTED;
       connectedAt = millis();
+      WiFi.setAutoReconnect(true);   // ya conectados: que el STA reconecte solo si se cae
       prefs.putString("ssid", pendSsid);
       prefs.putString("user", pendUser);
       prefs.putString("anon", pendAnon);
